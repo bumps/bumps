@@ -38,7 +38,7 @@ async function fetch_and_draw(latest_timestamp: string): Promise<void> {
 
     const payload = (await props.socket.asyncEmit(
       "get_uncertainty_plot",
-      latest_timestamp
+      latest_timestamp,
     )) as Plotly.PlotlyDataLayoutConfig;
     plotdata = { ...payload };
     cache[title] = { timestamp: latest_timestamp, plotdata };

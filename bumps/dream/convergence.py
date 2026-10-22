@@ -55,7 +55,7 @@ def ks_converged(
     earlier, with more samples after the burn point.
 
     *samples* is the size of the sample window. If the window is too big
-    the test will falsly end burn when the start of the window is still
+    the test will falsely end burn when the start of the window is still
     converging.  If the window is too small the test will take a long time,
     and will start to show effects of autocorrelation (efficient MCMC
     samplers move slowly across the posterior probability space, showing
@@ -162,7 +162,7 @@ def burn_point(
     earlier, with more samples after the burn point.
 
     *samples* is the size of the sample window. If the window is too big
-    the test will falsly end burn when the start of the window is still
+    the test will falsely end burn when the start of the window is still
     converging.  If the window is too small the test will take a long time,
     and will start to show effects of autocorrelation (efficient MCMC
     samplers move slowly across the posterior probability space, showing
@@ -205,7 +205,7 @@ def _ks_sliding_window(*, state: "MCMCDraw", trials: int, density: float, alpha:
     n_draw = int(density * samples)
     for index in range(0, max_index + 1, window_size):
         # [PAK] make sure the worst point is not in the first window.
-        # Stastically this will introduce some bias (by chance the max could
+        # Statistically this will introduce some bias (by chance the max could
         # happen to occur in the first window) but it will be small when the
         # window is small relative to the full pool.  A better test would
         # count the number of samples worse than the all the tail, compute

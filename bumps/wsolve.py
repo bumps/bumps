@@ -80,7 +80,7 @@ class LinearModel(object):
     mean at $x$.  It should get smaller as you increase the number of
     measurements.  Error bars in the physical sciences usually show
     a $1-\alpha$ confidence value of $\text{erfc}(1/\sqrt{2})$, representing
-    a $1-\sigma$ standand deviation of uncertainty in the mean.
+    a $1-\sigma$ standard deviation of uncertainty in the mean.
 
     Confidence intervals for the expected value of the linear system
     evaluated at a new point $w$ are given by the $t$ distribution for

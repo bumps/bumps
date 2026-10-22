@@ -87,7 +87,7 @@ def lhs_init(n, initial, bounds, use_point=False):
     satisfies the LHS condition, and you can see that the guarantees are
     not very strong.  A better methods, similar to sudoku puzzles, would
     guarantee coverage in each block of the matrix, but this is not
-    yet implmeneted.
+    yet implemented.
 
     If *use_point* is True, then the current value of the parameters
     is returned as the first point in the population, preserving the the

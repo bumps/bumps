@@ -14,7 +14,7 @@ Credits
 Bumps package was developed under DANSE project and is maintained by
 its user community.
 
-It can by referenced by DOI: `10.5281/zenodo.15730428 <https://doi.org/10.5281/zenodo.15730428>`_.
+It can be referenced by DOI: `10.5281/zenodo.15730428 <https://doi.org/10.5281/zenodo.15730428>`_.
 (citation text available at that link)
 
 Or cited as:

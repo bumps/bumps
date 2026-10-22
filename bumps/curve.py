@@ -446,9 +446,11 @@ def _plot_fits(data, theory, colors, labels, view):
 
     x, y, dy = data
     theory_x, theory_y = theory
+    # Protect against unsorted data when plotting theory lines
+    index = np.argsort(theory_x)
     for k, color in enumerate(colors):
         plt.errorbar(x, y[:, k], yerr=dy[:, k], fmt=".", color=color["base"], label="_")
-        plt.plot(theory_x, theory_y[:, k], "-", color=color["dark"], label=labels[k + 2])
+        plt.plot(theory_x[index], theory_y[index, k], "-", color=color["dark"], label=labels[k + 2])
     # Note: no xlabel since it is supplied by the residual plot below this plot
     plt.ylabel(labels[1])
     if len(colors) > 1:

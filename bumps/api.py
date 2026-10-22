@@ -14,7 +14,7 @@ are not particularly useful from a jupyter notebook.
 
     # Load a model script, possibly with additional command line arguments:
     path = Path("path/to/model.py")
-    problem = bp.load_model(path, args=[arg1, ...])
+    problem = bp.load_problem(path, args=[arg1, ...])
 
     # Use a problem defined in a separate jupyter cell
     await bp.set_problem(problem, new_model=False)
@@ -47,26 +47,24 @@ import asyncio
 from pathlib import Path
 import json
 from copy import deepcopy
-import os
+import sys
 import uuid
 import traceback
-import math
 import time
 
-from bumps.fitproblem import load_problem
-from bumps.fitters import FitDriver, OptimizeResult
-from bumps.mapper import MPMapper
-from bumps.parameter import Parameter, Constant, Variable, unique
-import bumps.cli
-import bumps.fitproblem
-import bumps.dream.stats
-from bumps.dream.state import MCMCDraw
-import bumps.errplot
-from bumps.util import push_mpl_backend
+from . import errplot
+from . import options as fit_options
+from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
+from .fitproblem import Fitness, FitProblem, load_problem, load_pars, fitness_chisq_str
+from .fitters import FitDriver, OptimizeResult, FIT_DEFAULT_ID, FIT_ACTIVE_IDS, save_fit_result
+from .logger import logger
+from .mapper import MPMapper
+from .parameter import Parameter, Constant, Variable, unique
+from .dream.stats import var_stats
+from .dream.state import MCMCDraw
+from .util import push_mpl_backend
 
-from . import fit_options
-from .state_hdf5_backed import (
-    UNDEFINED,
+from .state import (
     UNDEFINED_TYPE,
     FitResult,
     State,
@@ -77,12 +75,27 @@ from .state_hdf5_backed import (
     SERIALIZER_EXTENSIONS,
     TopicNameType,
 )
-from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
-from .varplot import plot_vars
-from .traceplot import plot_trace
-from .logger import logger
-from .convergence_plot import convergence_plot
-from .custom_plot import process_custom_plot, CustomWebviewPlot
+from .plots.varplot import plot_vars
+from .plots.traceplot import plot_trace
+from .plots.convergence_plot import convergence_plot
+from .plots.custom_plot import process_custom_plot, CustomWebviewPlot
+from .plots.corrplot import Corr2d
+
+
+# CRUFT: os.listdrives requires python 3.12 (and only exists on windows)
+try:
+    from os import listdrives
+except ImportError:
+
+    def listdrives() -> list[str]:
+        """List Windows drive roots, e.g. ["C:\\", "D:\\"]; empty on other platforms."""
+        if sys.platform == "win32":
+            import ctypes
+
+            bitmask = ctypes.windll.kernel32.GetLogicalDrives()
+            return [f"{chr(65 + i)}:\\" for i in range(26) if bitmask & (1 << i)]
+        return []
+
 
 # CRUFT: python 3.8 does not have asyncio.to_thread
 try:
@@ -102,10 +115,10 @@ TRACE_MEMORY = False
 # TODO: reloading the module wipes out state
 # TODO: any other state that needs to be initialized?
 
-# Initialize state
+# Initialize state with default fitter id and default options for each fitter.
 state = State()
-state.shared.selected_fitter = fit_options.DEFAULT_FITTER_ID
-state.shared.fitter_settings = deepcopy(fit_options.FITTER_DEFAULTS)
+state.shared.selected_fitter = FIT_DEFAULT_ID
+state.shared.fitter_settings = deepcopy(fit_options.get_fitter_defaults(active_only=False))
 
 
 def register(fn: Callable):
@@ -244,7 +257,7 @@ async def set_fit_result(fit_result: FitResult):
 
 
 async def set_problem(
-    problem: bumps.fitproblem.FitProblem,
+    problem: FitProblem,
     path: Optional[Path] = None,
     filename: str = "",
     new_model: bool = True,
@@ -415,6 +428,43 @@ async def load_session(pathlist: List[str], filename: str, read_only: bool = Fal
 
 
 @register
+async def update_serialized_problem(
+    serialized: str,
+    method: str = "dataclass",
+    name: Optional[str] = None,
+):
+    """Update the current FitProblem without resetting the fit state.
+
+    Use this instead of ``set_serialized_problem`` when you want to resume
+    DREAM from the existing chain population rather than starting fresh.
+
+    Parameter-space changes (parameters added, removed, or renamed) are handled
+    automatically on the next ``start_fit_thread("dream", options, resume=True)``
+    call: ``DreamFit.solve`` detects the label mismatch and rebuilds the chain
+    state via ``_rebuild_mcmc_state`` before sampling begins.
+
+    Use ``set_serialized_problem()`` for a true cold start.
+
+    The *method* parameter accepts ``"dataclass"`` (default, safe),
+    ``"pickle"``, ``"cloudpickle"``, or ``"dill"``.  The latter three enable
+    arbitrary code execution and carry the same caveat as
+    ``set_serialized_problem``.
+    """
+    # Deserialize the new problem first so we fail fast on bad input.
+    fitProblem = deserialize_problem(serialized, method=method)
+
+    # Install the new problem; the existing fit_state is preserved intact.
+    # Any parameter-space mismatch is resolved automatically by DreamFit.solve().
+    state.problem.fitProblem = fitProblem
+    if name:
+        fitProblem.name = name
+    state.shared.updated_model = now_string()
+    state.shared.updated_parameters = now_string()
+
+    state.autosave()
+
+
+@register
 async def set_session_output_file(filepath: Optional[Union[str, Path]] = None):
     """
     Set the session output file to be used for saving results, and enable autosave.
@@ -482,13 +532,13 @@ async def export_results(export_path: Union[str, List[str]] = ""):
 # Note: need naming convention for sync and async versions
 def export_fit(
     path: Path | str,
-    problem: bumps.fitproblem.FitProblem,
+    problem: FitProblem,
     fit: FitResult | OptimizeResult,
     serializer: Optional[str] = "dataclass",
     basename: Optional[str] = None,
 ):
     # print("running export thread")
-    from bumps.util import redirect_console
+    from .util import redirect_console
 
     path = Path(path)
 
@@ -537,6 +587,12 @@ def export_fit(
     # Write the pars file.
     _write_pars(problem, path, f"{basename}.par")
 
+    # Write a machine-readable summary of the fit results.
+    try:
+        save_fit_result(problem, fit, path / f"{basename}-fit.json")
+    except Exception as exc:
+        logger.error(f"Error writing {basename}-fit.json: {exc}")
+
     # Handle OptimizeResult or FitResult
     fit_state = getattr(fit, "fit_state", getattr(fit, "state", None))
     with push_mpl_backend("agg"):
@@ -552,11 +608,12 @@ def export_fit(
                 fit_state.show(figfile=output_pathstr)
             fit_state.save(output_pathstr)
 
+        # TODO: draw from covariance matrix if we don't have an MC sample
+        # Only proceed with uncertainty plots if we can draw from the state
+        if hasattr(fit_state, "draw"):
             # TODO: duplicates code in fitters.DreamFit.error_plot
             # TODO: refactor to separate calculation from display
             # TODO: share calc_errors result with get_model_uncertainty_plot
-            from bumps import errplot
-
             points = errplot.error_points_from_state(state=fit_state)
             res = errplot.calc_errors(problem, points)
             if res is not None:
@@ -592,7 +649,7 @@ async def apply_parameters(pathlist: List[str], filename: str):
     fullpath = path / filename
     try:
         # print(f"loading parameters from {fullpath}")
-        bumps.cli.load_best(state.problem.fitProblem, fullpath)
+        load_pars(state.problem.fitProblem, fullpath)
         state.shared.updated_parameters = now_string()
         await log(f"Applied parameters from {fullpath}")
         await add_notification(
@@ -643,7 +700,7 @@ async def stop_fit(wait=True):
 
 
 @register
-async def get_chisq(problem: Optional[bumps.fitproblem.FitProblem] = None, nllf=None) -> str:
+async def get_chisq(problem: Optional[FitProblem] = None, nllf=None) -> str:
     if problem is None:
         problem = state.problem.fitProblem
     if problem is None:
@@ -847,7 +904,7 @@ async def _fit_complete_handler(event: Dict[str, Any]):
             return
 
         # print(event['info'])  # Needed if we are dumping fit outputs to the terminal
-        problem: bumps.fitproblem.FitProblem = event["problem"]
+        problem: FitProblem = event["problem"]
         chisq = nice(problem.chisq(nllf=event["value"]))
         problem.setp(event["point"])  # setp calls model_update
         state.problem.fitProblem = problem
@@ -926,8 +983,6 @@ async def log(message: str, title: Optional[str] = None):
 
 @register
 async def get_data_plot(model_indices: Optional[List[int]] = None):
-    from bumps.fitproblem import fitness_chisq_str
-
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = deepcopy(state.problem.fitProblem)
@@ -1105,8 +1160,8 @@ async def get_model():
 class WebviewPlotFunction(Protocol):
     def __call__(
         self,
-        model: bumps.fitproblem.Fitness,
-        problem: bumps.fitproblem.FitProblem,
+        model: Fitness,
+        problem: FitProblem,
         state: Optional[MCMCDraw] = None,
         n_samples: Optional[int] = None,
     ) -> dict: ...
@@ -1245,8 +1300,6 @@ def _get_correlation_plot(
     vars=None,
     timestamp: str = "",
 ):
-    from .corrplot import Corr2d
-
     fit_state = state.fitting.fit_state
 
     if hasattr(fit_state, "draw"):
@@ -1293,7 +1346,7 @@ def _get_uncertainty_plot(timestamp: str = "", cbar_colors: int = 8):
         logger.info(f"queueing new uncertainty plot... {start_time}")
         draw = fit_state.draw()
         nbins = max(min(draw.points.shape[0] // 20000, 100), 30)
-        stats = bumps.dream.stats.var_stats(draw)
+        stats = var_stats(draw)
         fig = plot_vars(draw, stats, nbins=nbins, cbar_colors=cbar_colors)
         logger.info(f"time to draw uncertainty plot: {time.time() - start_time}")
         return to_json_compatible_dict(fig)
@@ -1321,12 +1374,12 @@ async def get_model_uncertainty_plot():
 
     start_time = time.time()
     logger.info(f"queueing new model uncertainty plot... {start_time}")
-    points = bumps.errplot.error_points_from_state(fit_state)
-    errs = bumps.errplot.calc_errors(fitProblem, points)
+    points = errplot.error_points_from_state(fit_state)
+    errs = errplot.calc_errors(fitProblem, points)
     logger.info(f"errors calculated: {time.time() - start_time}")
     with push_mpl_backend("agg"):
         fig = plt.figure()
-        bumps.errplot.show_errors(errs, fig=fig)
+        errplot.show_errors(errs, fig=fig)
         logger.info(f"time to render but not serialize... {time.time() - start_time}")
         fig.canvas.draw()
         dfig = mpld3.fig_to_dict(fig)
@@ -1365,7 +1418,7 @@ async def get_parameter_trace_plot(var: int):
         label = fit_state.labels[var]
         fig = plot_trace(
             genid,
-            chains[:, :, var],
+            chains[:, :, var].T,
             label=label,
             alpha=0.4,
         )
@@ -1501,43 +1554,75 @@ async def get_topic_messages(topic: Optional[TopicNameType] = None, max_num=None
         return list(itertools.islice(q, start, q_length))
 
 
-@register
-async def get_dirlisting(pathlist: Optional[List[str]] = None):
-    # GET request
-    # TODO: use psutil to get disk listing as well?
+DIRLISTING_TIMEOUT = 10.0  # seconds before an unreachable path returns an error instead of hanging
+
+
+def _get_dirlisting_sync(pathlist: Optional[List[str]] = None):
+    """Walk a directory synchronously; run via asyncio.to_thread (filesystem I/O may be slow on network drives)."""
     subfolders = []
     files = []
     path = Path(state.base_path) if (pathlist is None or len(pathlist) == 0) else Path(*pathlist)
+    missing = None
     if not path.exists():
-        await add_notification(
-            f"Path does not exist: {path}, falling back to current working directory",
-            title="Error",
-            timeout=2000,
-        )
+        missing = path
         path = Path.cwd()
 
     abs_path = path.absolute()
     for p in abs_path.iterdir():
-        if not p.exists():
+        try:
+            stat = p.stat()
+        except OSError:
+            # entry vanished between iterdir() and stat(), or is a broken symlink
             continue
-        stat = p.stat()
         mtime = stat.st_mtime
         fileinfo = {"name": p.name, "modified": mtime}
         if p.is_dir():
-            fileinfo["size"] = len(list(p.glob("*")))
+            # NOTE: not counting directory contents — a glob per subfolder costs one
+            # round-trip each on network filesystems, and the count is not displayed.
+            fileinfo["size"] = 0
             subfolders.append(fileinfo)
         else:
             # files.append(p.resolve().name)
             fileinfo["size"] = stat.st_size
             files.append(fileinfo)
     # for Windows: list drives as well
-    drives = os.listdrives() if hasattr(os, "listdrives") else []
-    return dict(drives=drives, pathlist=abs_path.parts, subfolders=subfolders, files=files)
+    drives = listdrives()
+    return dict(drives=drives, pathlist=abs_path.parts, subfolders=subfolders, files=files), missing
+
+
+@register
+async def get_dirlisting(pathlist: Optional[List[str]] = None):
+    # GET request
+    # TODO: use psutil to get disk listing as well?
+    try:
+        result, missing = await asyncio.wait_for(
+            asyncio.to_thread(_get_dirlisting_sync, pathlist),
+            timeout=DIRLISTING_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        path_str = str(Path(*pathlist)) if pathlist else str(state.base_path)
+        return {"error": f"Timed out reading directory: {path_str} (network drive may be unreachable)"}
+    except OSError as exc:
+        return {"error": f"Cannot read directory: {exc}"}
+    if missing is not None:
+        await add_notification(
+            f"Path does not exist: {missing}, falling back to current working directory",
+            title="Error",
+            timeout=2000,
+        )
+    return result
 
 
 @register
 async def get_fitter_defaults():
-    return fit_options.FITTER_DEFAULTS
+    # TODO: Need a better way to include experimental fitters in the web ui.
+    # This hack allows gui reset of fit options when --fit=pt is on the command line
+    # by allowing every experimental and deprecated fitter to appear in the fit selector.
+    # That all of them appear is okay since this only affects users who already know that
+    # there are experimental fitters available. It will probably break when we refactor
+    # the command line processor, or when we start webview from a jupyter notebook.
+    active_only = state.shared.selected_fitter in FIT_ACTIVE_IDS
+    return fit_options.get_fitter_defaults(active_only=active_only)
 
 
 @register
@@ -1593,6 +1678,7 @@ def nice(v, digits=4):
 
 
 JSON_TYPE = Union[str, float, bool, None, Sequence["JSON_TYPE"], Mapping[str, "JSON_TYPE"]]
+"""Type union of a JSON compatible python structure"""
 
 
 def to_json_compatible_dict(obj) -> JSON_TYPE:
@@ -1620,6 +1706,7 @@ class ParamInfo(TypedDict, total=False):
     id: str
     name: str
     paths: List[str]
+    slot_repr: str
     value_str: str
     fittable: bool
     fixed: bool
@@ -1627,6 +1714,7 @@ class ParamInfo(TypedDict, total=False):
     value01: float
     min_str: str
     max_str: str
+    tags: List[str]
 
 
 def params_to_list(params, lookup=None, path="", freevars=None) -> List[ParamInfo]:
@@ -1650,18 +1738,18 @@ def params_to_list(params, lookup=None, path="", freevars=None) -> List[ParamInf
         existing = lookup.get(pid, None)
         if existing is not None:
             existing["paths"].append(path)
-        elif freevars.isfree(params):
+        elif freevars is not None and freevars.isfree(params):
             # Don't include free parameters from the model in the list
             # of available parameters.
             pass
         else:
             value_str = VALUE_FORMAT.format(nice(params.value))
             writable = has_slot and isinstance(params.slot, (float, Variable, Parameter))
-            paths = [path] if not has_slot or isinstance(params.slot, (float, Variable)) else [f"{path}={params.slot}"]
             new_item: ParamInfo = {
                 "id": pid,
                 "name": str(params.name),
-                "paths": paths,
+                "paths": [path],
+                "slot_repr": str(params.slot) if has_slot else "",
                 "tags": getattr(params, "tags", []),
                 "writable": writable,
                 "value_str": value_str,

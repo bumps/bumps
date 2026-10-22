@@ -23,6 +23,10 @@ def dict2csv(csvdict: dict) -> str:
 
 
 class CustomWebviewPlot(TypedDict):
+    """
+    Container for a custom plottable, indicating its type, its data and its exportables.
+    """
+
     fig_type: Literal["plotly", "matplotlib", "table", "error"] = "plotly"
     plotdata: Any
     exportdata: Optional[str] = None

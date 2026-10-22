@@ -8,7 +8,7 @@ Contributing Changes
 
 
 The bumps package is a community project, and we welcome contributions from anyone.
-The package is developed collaboratively on `Github <https://github.com>`_ - if
+The package is developed collaboratively on `GitHub <https://github.com>`_ - if
 you don't have an account yet, you can sign up for free.
 For direct write access to the repository, it is required that your account have
 `two-factor authentication enabled <https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa>`_.
@@ -19,7 +19,7 @@ for authentication.
 The best way to contribute to the bumps package is to work
 from a copy of the source tree in the revision control system.
 
-The bumps project is hosted on github at:
+The bumps project is hosted on GitHub at:
 
     https://github.com/bumps/bumps
 
@@ -37,14 +37,14 @@ on making only a few small changes, you can clone the repository directly,
 make the changes, document and test, then send a patch (see `Simple patches <#Simple-patches>`_ below).
 
 If you are planning on making larger changes, you should fork the repository
-on github, make the changes in your fork, then issue a pull request to the
+on GitHub, make the changes in your fork, then issue a pull request to the
 main repository (see `Larger changes <#Larger-changes>`_ below).
 
 .. note::
 
     If you are working on a fork, the clone line is slightly different::
 
-        git clone https://github.com/YourGithubAccount/bumps
+        git clone https://github.com/YourGitHubAccount/bumps
 
 
     You will also need to keep your fork up to date
@@ -195,10 +195,10 @@ To see what actions are being run, inspect the `.pre-commit-config.yaml` file in
 Larger changes
 --------------
 
-For a larger set of changes, you should fork bumps on github, and issue pull
+For a larger set of changes, you should fork bumps on GitHub, and issue pull
 requests for each part.
 
-After you have tested your changes, you will need to push them to your github
+After you have tested your changes, you will need to push them to your GitHub
 fork::
 
     git commit -a -m "short sentence describing what the change is for"
@@ -225,7 +225,7 @@ environments. You can create a new environment for testing with, for example::
     pip install -e .[dev]
     pytest
 
-When all the tests pass, issue a pull request from your github account.
+When all the tests pass, issue a pull request from your GitHub account.
 
 Please make sure that the documentation is up to date, and can be properly
 processed by the sphinx documentation system.  See `_docbuild` for details.

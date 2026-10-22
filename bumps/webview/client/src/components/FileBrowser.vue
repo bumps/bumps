@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, shallowRef, watch } from "vue";
+import { computed, ref, shallowRef, watch } from "vue";
 import { formatRelative } from "date-fns";
 import { addNotification } from "../app_state";
 import type { FileBrowserSettings } from "../app_state";
@@ -37,6 +37,8 @@ const step = ref(1);
 const active_search_pattern = ref<string | null>(null);
 const active_search_regexp = ref<RegExp | null>(null);
 const settings = ref<FileBrowserSettings>();
+
+const canGoUp = computed(() => pathlist.value.length > 1);
 
 function close() {
   dialog.value?.close();
@@ -79,6 +81,12 @@ function FileInfoSearch(f: FileInfo) {
 async function subdirClick(subdir: string) {
   pathlist.value.push(subdir);
   await setPath(pathlist.value);
+}
+
+async function goUp() {
+  if (pathlist.value.length > 1) {
+    await setPath(pathlist.value.slice(0, -1));
+  }
 }
 
 interface DirListing {
@@ -196,9 +204,10 @@ defineExpose({
             <button type="button" class="btn-close" aria-label="Close" @click="close"></button>
           </div>
           <div class="p-1 border-bottom">
-            <div v-if="drives.length > 1" class="container py-1 px-3">
-              <nav aria-label="breadcrumb">
+            <div v-if="drives.length > 0" class="container py-1 px-3">
+              <nav aria-label="drives">
                 <ol class="breadcrumb mb-0">
+                  <li class="breadcrumb-item fw-bold me-1">Drives:</li>
                   <li v-for="drive in drives" :key="drive" class="breadcrumb-item">
                     <a href="#" @click.prevent="setPath([drive])">{{ drive }}</a>
                   </li>
@@ -208,6 +217,9 @@ defineExpose({
             <div class="container py-1 px-3">
               <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
+                  <li v-if="canGoUp" class="breadcrumb-item">
+                    <a href="#" title="Go up one level" @click.prevent="goUp">⬆</a>
+                  </li>
                   <li v-for="(pathitem, index) in pathlist" :key="index" class="breadcrumb-item">
                     <a href="#" @click.prevent="setPath(pathlist.slice(0, index + 1))">{{ pathitem }}</a>
                   </li>
@@ -236,12 +248,14 @@ defineExpose({
             <div class="container border-bottom">
               <h5>Subdirectories:</h5>
               <div class="row row-cols-3">
+                <div v-if="canGoUp" class="col overflow-hidden">
+                  <a href="#" title="Parent directory" @click.prevent="goUp">..</a>
+                </div>
                 <div v-for="subdir in subdirlist" :key="subdir.name" class="col overflow-hidden">
                   <a href="#" :title="subdir.name" @click.prevent="subdirClick(subdir.name)">{{ subdir.name }}</a>
                 </div>
               </div>
             </div>
-            <div>show files: {{ settings?.show_files }}</div>
             <div v-if="settings?.show_files" class="container">
               <h5>Files:</h5>
               <table class="table table-sm">
