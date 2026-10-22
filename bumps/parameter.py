@@ -692,20 +692,13 @@ class Parameter(ValueProtocol, SupportsPrior):
 
 
 def tag_all(parameter_tree, tag, remove=False):
-    if isinstance(parameter_tree, dict):
-        tag_all([item for item in parameter_tree.values()], tag, remove=remove)
-    elif hasattr(parameter_tree, "add_tag"):
+    for p in unique(parameter_tree):
         if remove:
-            parameter_tree.remove_tag(tag)
+            if hasattr(p, "remove_tag"):
+                p.remove_tag(tag)
         else:
-            parameter_tree.add_tag(tag)
-    elif hasattr(parameter_tree, "parameters"):
-        tag_all(parameter_tree.parameters(), tag, remove=remove)
-    elif hasattr(parameter_tree, "__iter__"):
-        for item in parameter_tree:
-            tag_all(item, tag, remove=remove)
-    else:
-        warnings.warn(f"parameter tree should have only list, object and Parameter items: {parameter_tree}")
+            if hasattr(p, "add_tag"):
+                p.add_tag(tag)
 
 
 def untag_all(parameter_tree, tag: Optional[str] = None):

@@ -608,6 +608,9 @@ def export_fit(
                 fit_state.show(figfile=output_pathstr)
             fit_state.save(output_pathstr)
 
+        # TODO: draw from covariance matrix if we don't have an MC sample
+        # Only proceed with uncertainty plots if we can draw from the state
+        if hasattr(fit_state, "draw"):
             # TODO: duplicates code in fitters.DreamFit.error_plot
             # TODO: refactor to separate calculation from display
             # TODO: share calc_errors result with get_model_uncertainty_plot
@@ -1415,7 +1418,7 @@ async def get_parameter_trace_plot(var: int):
         label = fit_state.labels[var]
         fig = plot_trace(
             genid,
-            chains[:, :, var],
+            chains[:, :, var].T,
             label=label,
             alpha=0.4,
         )

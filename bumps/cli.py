@@ -147,6 +147,32 @@ class BumpsOptions:
     hub: Optional[str] = None
     convergence_heartbeat: bool = False
 
+    # Derived options
+    def use_webview(self):
+        return self.mode != "batch" and not self.info_only()
+
+    def info_only(self):
+        return self.chisq
+
+    def need_mapper(self):
+        return not self.info_only()
+
+    def use_mpi(self):
+        # bumps.mapper.using_mpi() is unreliable --- there is no way to tell if
+        # the program was launched via mpirun or as a standalone application.
+        # from bumps.mapper import using_mpi
+        # is_mpi = (self.mpi or (self.mpi is None and using_mpi()))
+        is_mpi = self.mpi
+        # Note: if we aren't using the mpi mapper the mpi initialization will
+        # not be called even if the program was started using mpiexec or mpirun.
+        return self.need_mapper() and self.parallel != 1 and is_mpi
+
+    def autostart(self):
+        return not self.use_webview() or self.mode in ("start", "run") or self.resume
+
+    def autostop(self):
+        return not self.use_webview() or self.mode == "run"
+
 
 class DictAction(argparse.Action):
     """
@@ -444,7 +470,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     misc.add_argument(
         "--mpi",
         action=argparse.BooleanOptionalAction,
-        help="Use MPI for parallelization (only needed if we fail to detect MPI correctly)",
+        help=f"Use MPI for parallelization (mpirun {prog} --mpi ...)",
     )
     misc.add_argument(
         "--trace",
@@ -814,8 +840,7 @@ def interpret_fit_options(options: BumpsOptions):
     if options.shake:
         on_startup.append(lambda App=None: api.shake_parameters())
 
-    need_mapper = not options.chisq
-    if need_mapper:
+    if options.need_mapper():
         from bumps.mapper import MPIMapper, MPMapper, SerialMapper, ThreadPoolMapper, using_mpi
 
         async def start_mapper(App=None):
@@ -828,7 +853,7 @@ def interpret_fit_options(options: BumpsOptions):
                 problem = api.state.problem.fitProblem
             else:
                 problem = None
-            if using_mpi() or options.mpi:
+            if options.use_mpi():
                 # print("Starting with MPI mapper")
                 mapper = MPIMapper
             elif options.parallel == 1:
@@ -843,9 +868,9 @@ def interpret_fit_options(options: BumpsOptions):
 
         on_startup.append(start_mapper)
 
-    webview = options.mode != "batch"
-    autostart = not webview or options.mode in ("start", "run") or options.resume
-    autostop = not webview or options.mode == "run"
+    # webview = options.mode != "batch"
+    # autostart = not webview or options.mode in ("start", "run") or options.resume
+    # autostop = not webview or options.mode == "run"
     # print(f"{options.mode=} {webview=} {autostart=} {autostop=}")
 
     if options.chisq:
@@ -861,7 +886,7 @@ def interpret_fit_options(options: BumpsOptions):
 
         on_startup.append(show_chisq)
 
-    elif autostart:  # if batch mode then start the fit
+    elif options.autostart():  # if batch mode then start the fit
 
         async def start_fit(App=None):
             # print(f"{api.state.rank}start fit")
@@ -883,12 +908,7 @@ def interpret_fit_options(options: BumpsOptions):
             problem, state = api.state.problem.fitProblem, api.state.fitting.fit_state
             x = problem.getp()
             # TODO: Should we show the estimates from derivatives even when running dream?
-            if state is None:
-                cov = problem.cov(x)
-                vstats = None
-                dx = stderr(cov)
-                S, dS = cov_entropy(cov), 0
-            else:
+            if hasattr(state, "draw"):
                 draw = state.draw()
                 # TODO: if there are derived variables then problem.show() doesn't work
                 # TODO: sample from whole population, not just the end, to reduce autocorrelation
@@ -899,6 +919,11 @@ def interpret_fit_options(options: BumpsOptions):
                 if show_entropy:
                     entropy_method = show_entropy
                     S, dS = state.entropy(method=entropy_method)
+            else:
+                cov = problem.cov(x)
+                vstats = None
+                dx = stderr(cov)
+                S, dS = cov_entropy(cov), 0
 
             if show_cov:
                 problem.show_cov(x, cov)
@@ -914,23 +939,23 @@ def interpret_fit_options(options: BumpsOptions):
             _show_results(options.show_err, options.show_cov, options.show_entropy)
 
         on_startup.append(start_fit)
-        api.state.console_update_interval = 0 if webview else 1
+        api.state.console_update_interval = 0 if options.use_webview() else 1
 
-        if not options.export and write_session is None and autostop:
+        if not options.export and write_session is None and options.autostop():
             # TODO: can we specify problem.path in the model file?
             # TODO: can we default the session file name to model.hdf?
             raise RuntimeError("Include '--session=output.h5' on the command line to save the fit.")
 
         # TODO: if not autostop maybe --export after fit only or after every fit
-        if options.export and autostop:
+        if options.export and options.autostop():
             # print("adding completion lambda")
             on_complete.append(lambda App=None: api.export_results(options.export))
 
-        if autostop:
+        if options.autostop():
             on_complete.append(show_results)
 
         # TODO: cleaner handling of autostop
-        if webview and autostop:  # trigger shutdown on fit complete [webview only]
+        if options.use_webview() and options.autostop():  # trigger shutdown on fit complete [webview only]
             # print("setting shutdown True")
             api.state.shutdown_on_fit_complete = True
 
@@ -1015,7 +1040,7 @@ def reload_export(
             raise ValueError(f"Model file has been modified. Copy {saved_model} into {modelfile.parent}")
 
         # Load the model script and the fitted values.
-        problem = load_problem(modelfile, model_options=args)
+        problem = load_problem(modelfile, args=args)
         load_pars(problem, parfile)
 
     # Load the MCMC files
@@ -1175,7 +1200,6 @@ def main(options: Optional[BumpsOptions] = None):
     # Need to set matplotlib to a non-interactive backend because it is being used in the
     # the export thread. The next_color method calls gca() which needs to produce a blank
     # graph even when there is none (we ask for next color before making the plot).
-    from bumps.mapper import using_mpi
 
     if options is None:
         options = get_commandline_options()
@@ -1185,9 +1209,6 @@ def main(options: Optional[BumpsOptions] = None):
     # from .logger import capture_warnings
     # capture_warnings(monkeypatch=True)
     logger.info(options)
-
-    info_only = options.chisq
-    webview = options.mode != "batch" and not info_only
 
     # TODO: cleaner way to isolate MPI?
     # TODO: cleaner handling of worker exit.
@@ -1202,7 +1223,7 @@ def main(options: Optional[BumpsOptions] = None):
     # and on complete actions are skipped. We could instead pass an is_worker flag
     # into the options processor so that there are no tasks to skip.
     # Don't use MPI autodetect when --mpi/--no-mpi is given on the command line.
-    if (options.mpi or (options.mpi is None and using_mpi())) and not info_only:
+    if options.use_mpi():
         # ** Warning **: importing MPI from mpi4py calls MPI_Init() which triggers
         # network traffic. Only import it when you know you are using MPI calls.
         from mpi4py import MPI
@@ -1213,7 +1234,7 @@ def main(options: Optional[BumpsOptions] = None):
         is_controller = True
         # api.state.rank = ""
 
-    if webview and is_controller:  # gui mode
+    if options.use_webview() and is_controller:  # gui mode
         # TODO: circular import since webserver imports from cli
         from .webview.webserver import start_from_cli
 

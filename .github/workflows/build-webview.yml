@@ -18,12 +18,12 @@ jobs:
           # all using to stable abi
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         ref: ${{ env.branch_name }}
 
     - name: Set up Python ${{ matrix.config.py }}
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       with:
         python-version: ${{ matrix.config.py }}
 

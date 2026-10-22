@@ -96,9 +96,16 @@ view the fit results use:
 
     bumps --session=fit.h5
 
+To run on a cluster using MPI use::
+
+.. code-block:: bash
+
+    mpirun bumps --mpi ...
+
 There are many command line options for controlling the fit. For a complete list use:
 
 .. code-block:: bash
+
 
     bumps -h
 
