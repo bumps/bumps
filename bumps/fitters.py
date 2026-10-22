@@ -2,6 +2,7 @@
 Interfaces to various optimizers.
 """
 
+import json
 import sys
 import warnings
 from time import perf_counter
@@ -19,8 +20,7 @@ from . import initpop
 from . import lsqerror
 
 from .history import History
-from .formatnum import format_uncertainty
-from .util import NDArray, format_duration
+from .util import NDArray, format_duration, format_uncertainty, redirect_console
 
 # For typing
 from typing import TYPE_CHECKING, List, Tuple, Dict, Any, Optional
@@ -29,6 +29,7 @@ from numpy.typing import NDArray
 if TYPE_CHECKING:
     from h5py import Group
     from bumps.dream.state import MCMCDraw
+
 
 class ConsoleMonitor(monitor.TimedUpdate):
     """
@@ -59,7 +60,8 @@ class ConsoleMonitor(monitor.TimedUpdate):
         sys.stdout.flush()
 
     def final(self, history: History, best: Dict[str, Any]):
-        self._print_chisq(history.step[0], best["value"], final=True)
+        k = history.step[0] if history.step else 0
+        self._print_chisq(k, best["value"], final=True)
         self._print_pars(best["point"])
         print(f"time {format_duration(history.time[0])}")
         sys.stdout.flush()
@@ -407,13 +409,13 @@ class DEFit(FitBase):
 
     @staticmethod
     def h5load(group: "Group") -> Any:
-        from .webview.server.state_hdf5_backed import read_json
+        from .state import read_json
 
         return read_json(group, "DE_history")
 
     @staticmethod
     def h5dump(group: "Group", state: Dict[str, Any]):
-        from .webview.server.state_hdf5_backed import write_json
+        from .state import write_json
 
         write_json(group, "DE_history", state)
 
@@ -884,6 +886,32 @@ class DreamModel:
         return -np.array(self.mapper(pop))
 
 
+def map_labels(labels: list, old_labels: list) -> list:
+    """Return (new_index, old_index) pairs for every label in *labels* that also
+    appears in *old_labels*.
+
+    Duplicates are matched in order: the first occurrence of a value in *labels*
+    maps to the first unused occurrence in *old_labels*, the second to the second,
+    and so on.
+
+    # TODO: Use map_labels() to simplify fitproblem.load_pars()
+    """
+    from collections import defaultdict
+
+    # Build a list of old positions for each label (to handle duplicates).
+    idx_map: defaultdict = defaultdict(list)
+    for j, s in enumerate(old_labels):
+        idx_map[s].append(j)
+
+    pairs = []
+    for i, s in enumerate(labels):
+        if idx_map[s]:
+            j = idx_map[s].pop(0)
+            pairs.append((i, j))
+
+    return pairs
+
+
 class DreamFit(FitBase):
     name = "DREAM"
     id = "dream"
@@ -916,12 +944,30 @@ class DreamFit(FitBase):
             monitors(step=step, point=x, value=-fx, population_points=pop, population_values=-logp)
             return True
 
-        population = initpop.generate(self.problem, **options)
+        if self.state is not None:
+            # Number of chains can't change on resume, so ignore pop option and
+            # use the existing chain count (negative pop = absolute count in generate).
+            population = initpop.generate(self.problem, init=options["init"], pop=-self.state.Npop)
+            labels, old_labels = self.problem.labels(), self.state.labels
+            if labels != old_labels:
+                # Parameter space changed (add/remove/reorder).  Seed matched
+                # columns from chain heads, then discard the old state so
+                # _run_dream starts fresh without an incompatible history buffer.
+                pairs = map_labels(labels, old_labels)
+                if pairs:
+                    new_index, old_index = zip(*pairs)
+                    old_population, _ = self.state._last_gen()
+                    population[:, list(new_index)] = old_population[:, list(old_index)]
+                self.state = None
+        else:
+            population = initpop.generate(self.problem, **options)
+
         pop_size = population.shape[0]
         draws, steps = int(options["samples"]), options["steps"]
         if steps == 0:
             steps = (draws + pop_size - 1) // pop_size
         monitors.info(f"# burn: {options['burn']} # steps: {steps}, # draws: {pop_size * steps}")
+
         population = population[None, :, :]
         # print(f"Running dream with {population.shape=} {pop_size=} {steps=}")
         sampler = Dream(
@@ -1040,6 +1086,7 @@ class DreamFit(FitBase):
     @classmethod
     def max_steps(cls, problem: "bumps.fitproblem.FitProblem", options: Optional[Dict[str, Any]] = None) -> int:
         from .dream.core import Dream
+
         options = _fill_defaults(options, cls.settings)
         num_fitparams = len(problem.getp())
         steps = options["steps"]
@@ -1349,6 +1396,35 @@ class FitDriver(object):
         }
 
 
+# CRUFT: replaced by export_fit, but still used by third parties.
+def save_best(fitdriver, problem=None, best=None, view=None):
+    """
+    Save the fit data, including parameter values, uncertainties and plots.
+
+    *fitdriver* is the fitter that was used to drive the fit.
+
+    *problem* is a FitProblem instance.
+
+    *best* is the parameter set to save.
+    """
+    if problem is None:
+        problem = fitdriver.problem
+    if best is None:
+        best = fitdriver.result[0]
+    # Make sure the problem contains the best value
+    if (problem.getp() != best).any():
+        problem.setp(best)
+    # TODO: use fitproblem.dump_pars(problem, path)
+    pardata = "".join("%s %.15g\n" % (name, value) for name, value in zip(problem.labels(), problem.getp()))
+    open(problem.output_path + ".par", "wt").write(pardata)
+
+    fitdriver.save(problem.output_path)
+    with redirect_console(problem.output_path + ".err"):
+        fitdriver.show()
+        fitdriver.plot(output_path=problem.output_path, view=view)
+    # print "plotting"
+
+
 def _fill_defaults(options: Optional[Dict[str, Any]], settings: List[Tuple[str, Any]]) -> Dict[str, Any]:
     """
     Returns options dict with missing values filled from settings.
@@ -1359,9 +1435,9 @@ def _fill_defaults(options: Optional[Dict[str, Any]], settings: List[Tuple[str, 
     return result
 
 
-FITTERS: List[FitBase] = []
-FIT_AVAILABLE_IDS = []
-FIT_ACTIVE_IDS = []
+FITTERS: list[FitBase] = []
+FIT_AVAILABLE_IDS: list[str] = []
+FIT_ACTIVE_IDS: list[str] = []
 
 
 def register(fitter, active=True):
@@ -1418,7 +1494,7 @@ Bumps functions:
 import bumps.names as bp
 bp.help("dream")                                     # display dream plot functions
 problem = bp.load_problem(path, args=[arg1, ...])    # load model from script (.py) or export (.json)
-options = dict(fit=dream, burn=100)                  # fit options (see bumps -h for list)
+options = dict(fit="dream", burn=100)                # fit options (see bumps -h for list)
 !bumps --help                                        # show available options
 fitresult = bp.fit(problem, **options)               # synchronous fit interface
 fitresult = bp.fit(problem, resume=fitresult, **options) # resume a fit from fitresult
@@ -1570,7 +1646,7 @@ def plot_convergence(results, cutoff=0.25, ax=None):
 
 def load_session(filename):
     """Reload a session file from a saved hdf"""
-    from bumps.webview.server.state_hdf5_backed import State
+    from .state import State
 
     session = State()
     session.read_session_file(filename)
@@ -1623,7 +1699,7 @@ def load_fit_from_export(
 
     sys.argv is set to *args* before loading the model.
     """
-    from .webview.server.cli import reload_export
+    from bumps.cli import reload_export
 
     problem, fit = reload_export(path, modelfile=modelfile, args=args)
     results = _build_fit_result(problem, fit)
@@ -1646,7 +1722,7 @@ def show_results(problem, results: OptimizeResult):
 
 def show_table(problem, results):
     print(f"Fit results for {problem.name or 'problem'}: χ² = {problem.chisq_str()}")
-    if results.state:
+    if hasattr(results.state, "draw"):
         from bumps.dream.stats import var_stats, format_vars
 
         draw = results.state.draw()
@@ -1666,7 +1742,7 @@ async def get_fit_from_webview(wait: bool = False):
 
     Returns the problem and an OptimizerResult similar to the simple fit() result
     """
-    from .webview.server.api import state, wait_for_fit_complete
+    from .api import state, wait_for_fit_complete
 
     # TODO: Any risk of another action happening between fit complete and fetch result?
     if wait:
@@ -1678,7 +1754,7 @@ async def get_fit_from_webview(wait: bool = False):
 
 # TODO: FitResult should include, x, dx, fx, cov, dof, etc.
 # TODO: FitResult.fit_state, but OptimizerResult.state
-# webview_fit: webview.server.state_hdf5_backed.FitResult
+# webview_fit: .state.FitResult
 def _build_fit_result(problem, webview_fit):
     x = problem.getp()
     cov = problem.cov(x)
@@ -1688,7 +1764,7 @@ def _build_fit_result(problem, webview_fit):
     # Don't know how many steps in current fit or total after resume, except
     # if the information happens to be stored in state
     fit_state = webview_fit.fit_state
-    steps = fit_state.total_generations if fit_state is not None else 0
+    steps = getattr(fit_state, "total_generations", 0)
     results = OptimizeResult(
         x=x,
         fun=fx,
@@ -1703,6 +1779,9 @@ def _build_fit_result(problem, webview_fit):
         # Non-standard results. Note convergence is in nominal chisq
         dx=dx,
         dof=dof,
+        labels=problem.labels(),
+        numpoints=problem.model_points(),
+        chisq=problem.chisq(nllf=fx),
         # webview FitResults
         state=fit_state,
         convergence=webview_fit.convergence,
@@ -1710,6 +1789,92 @@ def _build_fit_result(problem, webview_fit):
         options=webview_fit.options,
     )
     return results
+
+
+# OptimizeResult entries excluded from the exported fit results. The fitter
+# state is not JSON serializable and the convergence history belongs with the
+# plottable outputs rather than the fit summary; both are available in the
+# session file.
+_FIT_RESULT_EXCLUDE_FIELDS = ("state", "convergence")
+
+
+def fit_result_summary(results: OptimizeResult) -> dict:
+    """
+    Return a JSON-serializable summary of the fit *results*.
+
+    The summary contains every entry from *results* except the fitter state
+    and the convergence history. This includes the scipy-convention entries
+    (x, dx, fun, success, status, message, nit, ...) plus *labels* (the
+    fitted parameter labels, matching the order of x and dx), *numpoints*
+    (number of data points) and *chisq* (normalized chi-squared at the best
+    point, at full precision). For a model with gaussian independent
+    uncertainties the raw sum of squares is chisq*dof.
+    """
+    return {key: value for key, value in results.items() if key not in _FIT_RESULT_EXCLUDE_FIELDS}
+
+
+def save_fit_result(problem, fit, filename):
+    """
+    Save the :func:`fit_result_summary` of *fit* to *filename* as JSON,
+    conventionally *<model>-fit.json* in the export directory.
+
+    *fit* may be an :class:`OptimizeResult` or a webview ``FitResult``; the
+    latter is converted to an :class:`OptimizeResult` for the summary.
+    """
+    from .dream.stats import numpy_json
+
+    results = fit if isinstance(fit, OptimizeResult) else _build_fit_result(problem, fit)
+    with open(filename, "w") as fid:
+        json.dump(fit_result_summary(results), fid, default=numpy_json, sort_keys=True, indent=2)
+
+
+def test_fit_result_summary():
+    class _Problem:
+        dof = 8.0
+
+        def getp(self):
+            return np.array([1.0, 2.0])
+
+        def cov(self, x):
+            return np.diag([0.01, 0.04])
+
+        def nllf(self):
+            return 20.0
+
+        def labels(self):
+            return ["P1", "P2"]
+
+        def chisq(self, nllf=None):
+            return 2 * (self.nllf() if nllf is None else nllf) / self.dof
+
+        def model_points(self):
+            return 10
+
+    class _WebviewFit:
+        fit_state = None
+        convergence = np.zeros((5, 6))
+        method = "dream"
+        options = {"samples": 100}
+
+    results = _build_fit_result(_Problem(), _WebviewFit())
+    assert results["labels"] == ["P1", "P2"]
+    assert results["chisq"] == 5.0  # 2*20/8, full precision
+    assert results["numpoints"] == 10
+    assert results["dof"] == 8.0
+    assert results["method"] == "dream"
+
+    summary = fit_result_summary(results)
+    # everything except the fitter state and convergence history is exported
+    assert "state" not in summary
+    assert "convergence" not in summary
+    assert set(summary.keys()) == set(results.keys()) - set(_FIT_RESULT_EXCLUDE_FIELDS)
+    # the whole summary must survive a json round trip
+    from .dream.stats import numpy_json
+
+    data = json.loads(json.dumps(summary, default=numpy_json))
+    assert data["x"] == [1.0, 2.0]
+    assert data["dx"] == [0.1, 0.2]
+    assert data["chisq"] == 5.0
 
 
 # TODO: Move simplified fit interface to its own file.
@@ -1734,7 +1899,10 @@ def fit(
     The keyword argments mostly follow the argument names used in the bumps
     command line interface. Try use *method=method* rather than *fit=method*)
 
-    Returns a scipy *OptimizeResult* object containing *x* and *dx*.  Some
+    Returns a scipy *OptimizeResult* object containing *x* and *dx*, plus
+    *labels* (the fitted parameter labels, matching the order of x and dx),
+    *numpoints* (number of data points) and *chisq* (normalized chi-squared
+    at the best point, at full precision). Some
     fitters also include a *result.state* object. For dream this can be used as
     *bumps.dream.views.plot_all(result.state)* to generate the uncertainty
     plots. Use *plot_convergence(result)* to show how the fit progressed.
@@ -1771,13 +1939,19 @@ def fit(
     from pathlib import Path
     from scipy.optimize import OptimizeResult
     from .mapper import MPMapper, SerialMapper
-    from .webview.server.fit_thread import ConvergenceMonitor
-    from .webview.server.state_hdf5_backed import now_string
+    from .fit_thread import ConvergenceMonitor
+    from .state import now_string
 
     # Aliases for backwards compatibility (session=store) and cli compatibility (method=fit)
     # Options parser stores --fit=fitter in fit_options["fit"] rather than fit_options["method"]
     method = options.pop("fit", method)
     session = options.pop("store", session)
+
+    checkpoint_interval = options.pop("checkpoint", None)
+    if checkpoint_interval is not None:
+        warnings.warn("Checkpointing is not yet implemented in the simple fit interface")
+        # if session is None:
+        #     warnings.warn("Cannot save checkpoints when no session file is given.")
 
     # verbose = True
     if method not in FIT_AVAILABLE_IDS:
@@ -1828,6 +2002,9 @@ def fit(
         # Non-standard results. Note convergence is in nominal chisq
         dx=dx,
         dof=dof,
+        labels=problem.labels(),
+        numpoints=problem.model_points(),
+        chisq=problem.chisq(nllf=fx),
         timestamp=now_string(),
         # webview FitResults
         state=fit_state,
@@ -1855,14 +2032,14 @@ def fit(
     else:
         serializer = None
 
-    # TODO: can we put this in a function in state_hdf5_backed?
+    # TODO: can we put this in a function in state.py?
     if session is not None:
         save_fit(path=session, problem=problem, fit=result)
 
     if export is not None:
-        from .webview.server.api import export_fit
+        from .api import export_fit
 
-        export_fit(export, problem, result.state, basename=name)
+        export_fit(export, problem, result, basename=name)
 
     return result
 
@@ -1877,7 +2054,7 @@ def save_fit(
     """
     Write a fit to a session file.
     """
-    from .webview.server.state_hdf5_backed import State, FitResult, ProblemState
+    from .state import State, FitResult, ProblemState
 
     # TODO: strip non-options such as mapper from fit options
     path = Path(path)

@@ -4,6 +4,12 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.11"
+  jobs:
+    post_checkout:
+      # Unshallow the clone to ensure we have history
+      - git fetch --unshallow || true
+      # Specifically fetch all tags so versioningit can see them
+      - git fetch --all --tags || true
 
 # Build documentation in the doc/ directory with Sphinx
 sphinx:

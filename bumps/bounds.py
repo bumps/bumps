@@ -560,7 +560,9 @@ class Bounded(Bounds):
 
     def get01(self, x):
         lo, hi = self.limits
-        # TODO: check hi > lo during constructor
+        if lo >= hi:
+            # Return 50th percentile for all values if width is zero
+            return 0.5
         return clip(float(x - lo) / (hi - lo), 0, 1)
 
     def put01(self, v):
@@ -810,7 +812,7 @@ class BoundedNormal(Bounds):
         return f"({self.limits[0]},{self.limits[1]}), norm({self.mean},{self.std})"
 
 
-@dataclass(init=False, frozen=True)
+@dataclass(frozen=True)
 class SoftBounded(Bounds):
     """
     Parameter is pulled from a stretched normal distribution.
@@ -831,13 +833,8 @@ class SoftBounded(Bounds):
     hi: float = 1.0
     std: float = 1.0
 
-    def __init__(self, lo, hi, std=1.0):
-        self.lo, self.hi, self.std = lo, hi, std
-        self._nllf_scale = log(hi - lo + sqrt(2 * pi * std))
-
-    @property
-    def limits(self):
-        return (self.lo, self.hi)
+    def __post_init__(self):
+        object.__setattr__(self, "_nllf_scale", log(self.hi - self.lo + sqrt(2 * pi * self.std)))
 
     @property
     def dof(self):

@@ -31,10 +31,10 @@ Summary of problem attributes::
     plot(figfile: str, view: str) -> None
 
     # Set/used by bumps.cli
-    model_reset() -> None # called by load_model
-    path: str  # set by load_model
-    name: str # set by load_model
-    title: str = filename # set by load_moel
+    model_reset() -> None # called by load_problem
+    path: str  # set by load_problem
+    name: str # set by load_problem
+    title: str = filename # set by load_problem
     options: List[str]  # from sys.argv[1:]
     undefined:List[int]  # when loading a save .par file, these parameters weren't defined
     store: str # set by make_store
@@ -49,7 +49,7 @@ __all__ = ["Fitness", "FitProblem", "CovarianceMixin", "load_problem"]
 from contextlib import contextmanager
 from dataclasses import dataclass
 import logging
-import os
+import re
 import sys
 import traceback
 from typing import Generic, TypeVar, Union, Optional
@@ -62,7 +62,7 @@ from scipy.stats import chi2
 
 from . import parameter, util
 from .parameter import to_dict, Parameter, Variable, tag_all, priors
-from .formatnum import format_uncertainty
+from .util import format_uncertainty
 
 
 # Abstract base class:
@@ -170,6 +170,7 @@ def fitness_chisq(fitness: Fitness) -> str:
     dof = fitness.numpoints() - npars
     chisq_norm, _ = nllf_scale(dof=dof, npars=npars, norm=True)
 
+    # TODO: Check if parameters to fitness are in feasible region before computing nllf?
     chisq = fitness.nllf() * chisq_norm
     return chisq
 
@@ -185,6 +186,7 @@ def fitness_chisq_str(fitness: Fitness) -> str:
     dof = fitness.numpoints() - npars
     chisq_norm, chisq_err = nllf_scale(dof=dof, npars=npars, norm=True)
 
+    # TODO: Check if parameters are in feasible region before computing nllf?
     chisq = fitness.nllf() * chisq_norm
     text = format_uncertainty(chisq, chisq_err)
     # return f"{text} {fitness.nllf()=:.15e} {chisq_norm=:.15e} {chisq_err=:.15e} {dof=}"
@@ -198,6 +200,7 @@ def fitness_show_parameters(fitness: Fitness, subs: util.Optional[util.Dict[util
 
 
 FitnessType = TypeVar("FitnessType", bound=Fitness)
+""":class:`Fitness` interface"""
 
 
 class CovarianceMixin:
@@ -288,6 +291,12 @@ class CovarianceMixin:
         print("=" * 58)
 
 
+# The default penalty nllf has to be big enough that it won't be swamped by
+# the nllf of the residuals even for a 100 Mpixel image, but not so
+# big that the distance to the boundary is not lost in the floating point precision.
+PENALTY_NLLF = 1e12
+
+
 # TODO: add filename to fitproblem so we don't have to coordinate it elsewhere?
 @dataclass(init=False, eq=False)
 class FitProblem(Generic[FitnessType], CovarianceMixin):
@@ -323,7 +332,12 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
         values.
 
         *penalty_nllf* is the nllf to use for *fitness* when *constraints*
-        or model parameter bounds are not satisfied.
+        or model parameter bounds are not satisfied. The total nllf is the
+        squared distance from the boundary plus the penalty so that the derivative
+        points the search back to the feasible region. The penalty should be larger
+        than any nllf you might see near the boundary so that the fit doesn't get
+        stuck outside, but small enough that penalty plus distance is different from
+        penalty. The default is 1e12.
 
     Total nllf is the sum of the parameter nllf, the constraints nllf and the
     depending on whether constraints is greater than soft_limit, either the
@@ -333,7 +347,7 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
     linear.
     """
 
-    # TODO: problem.path is set by cli.load_model(); should we add it as standard?
+    # TODO: problem.path is set by fitproblem.load_problem(); should we add it as standard?
     name: util.Optional[str]
     models: util.List[FitnessType]
     freevars: util.Optional[parameter.FreeVariables]
@@ -341,7 +355,6 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
     constraints: util.Optional[util.Sequence[parameter.Constraint]]
     penalty_nllf: util.Union[float, util.Literal["inf"]]
 
-    _constraints_function: util.Callable[..., float]
     # The type is not quite correct. The models do not need to be of the same class
     _models: util.List[FitnessType]
     _priors: util.List[Parameter]
@@ -357,21 +370,15 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
         weights=None,
         name=None,
         constraints=None,
-        penalty_nllf="inf",
+        penalty_nllf=None,
         freevars=None,
-        soft_limit: util.Optional[float] = None,  # TODO: deprecate,
         auto_tag=False,
     ):
         if not isinstance(models, (list, tuple)):
             models = [models]
         if callable(constraints):
-            warnings.warn("convert constraints functions to constraint expressions", DeprecationWarning)
-            self._constraints_function = constraints
-            self.constraints = []
-        else:
-            self._constraints_function = self._null_constraints_function
-            # TODO: do we want to allow "constraints=a<b" or do we require a sequence "constraints=[a<b]"?
-            self.constraints = constraints if constraints is not None else []
+            raise TypeError("Callable constraints function is no longer supported. Instead use a list of comparisons.")
+        self.constraints = constraints if constraints is not None else []
         if freevars is None:
             names = ["M%d" % i for i, _ in enumerate(models)]
             freevars = parameter.FreeVariables(names=names)
@@ -384,16 +391,12 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
         if weights is None:
             weights = [1.0 for _ in models]
         self.weights = weights
-        self.penalty_nllf = float(penalty_nllf)
+        self.penalty_nllf = float(penalty_nllf) if penalty_nllf is not None else PENALTY_NLLF
         self.name = name
 
         # Do these steps last so that it has all of the attributes initialized.
         self.model_reset()  # sets self._all_constraints
         self.set_active_model(0)  # Set the active model to model 0
-
-    @staticmethod
-    def _null_constraints_function():
-        return 0.0
 
     @property
     def fitness(self):
@@ -481,6 +484,7 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
             pars["freevars"] = free
         return pars
 
+    # TODO: no longer used?
     def to_dict(self):
         return {
             "type": type(self).__name__,
@@ -554,22 +558,22 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
 
     def nllf(self, pvec=None) -> float:
         """
-        compute the cost function for a new parameter set p.
+        Compute the cost function for a new parameter set p.
 
-        this is not simply the sum-squared residuals, but instead is the
+        This is not simply the sum-squared residuals, but instead is the
         negative log likelihood of seeing the data given the model parameters
-        plus the negative log likelihood of seeing the model parameters.  the
+        plus the negative log likelihood of seeing the model parameters.  The
         value is used for a likelihood ratio test so normalization constants
-        can be ignored.  there is an additional penalty value provided by
-        the model which can be used to implement inequality constraints.  any
+        can be ignored.  There is an additional penalty value provided by
+        the model which can be used to implement inequality constraints.  Any
         penalty should be large enough that it is effectively excluded from
         the parameter space returned from uncertainty analysis.
 
-        the model is not actually calculated if any of the parameters are
+        The model is not actually calculated if any of the parameters are
         out of bounds, or any of the constraints are not satisfied, but
-        instead are assigned a value of *penalty_nllf*.
-        this will prevent expensive models from spending time computing
-        values in the unfeasible region.
+        instead are assigned a value of *penalty_nllf*. This will prevent
+        expensive models from spending time computing values in the unfeasible
+        region.
         """
         if pvec is not None:
             # Note that valid() only checks that the fit parameters are in the bounding box.
@@ -581,9 +585,20 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
             else:
                 return inf
 
-        pparameter, pconstraints, pmodel, failing_constraints = self._nllf_components()
-        cost = pparameter + pconstraints + pmodel
-        # print("cost=",pparameter,"+",pconstraints,"+",pmodel,"=",cost, pvec)
+        pparameter, pconstraints, pmodel, failing = self._nllf_components()
+        # Note: pmodel is zero if any constraints are failing. In that case the cost
+        # will be the squared distance from the boundary of the feasible region for
+        # the breaking parameters so that gradient descent can guide us back to the
+        # feasible region. The penalty would ideally be greater than any value of
+        # pmodel inside the boundary (otherwise the fitter may prefer the point in the
+        # infeasible region) but it has to be small enough that adding a small distance
+        # changes the penalty value (otherwise the slope outside the boundary is zero).
+        # Currently using 1e12 as the default penalty. This will be too small for many problems
+        # but any larger and the derivatives will break.
+        # TODO: Drop the penalty term, either by rewriting the fitters so they know that
+        # the constraints are broken, or rewriting the constraints to simple box constraints.
+        cost = pparameter + pconstraints + (self.penalty_nllf if failing else pmodel)
+        # print(f"prior:{float(pparameter)} + constraint:{float(pconstraints)} + nllf:{float(pmodel)} => {float(cost)} at [{pvec=}]")
         if isnan(cost):
             # TODO: make sure errors get back to the user
             # print "point evaluates to nan"
@@ -619,23 +634,15 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
         """
         chisq_norm, chisq_err = nllf_scale(dof=self.dof, npars=len(self._parameters), norm=norm)
         if nllf is None:
-            pparameter, pconstraints, pmodel, failing_constraints = self._nllf_components()
-            nllf = pparameter + pconstraints + pmodel if compact else pparameter + pmodel
-        else:
-            assert compact is True
+            pparameter, pconstraints, pmodel, failing = self._nllf_components()
+            nllf = pmodel + pparameter + pconstraints + (self.penalty_nllf if failing else 0)
         return nllf * chisq_norm
 
     # TODO: Too many versions of chisq about.
+    # Note: norm and compact are no longer used in bumps, so they are not documented
     def chisq_str(self, nllf: Optional[float] = None, norm: bool = True, compact: bool = True):
         """
         Return a string representing the chisq equivalent of the nllf.
-
-        If *norm* is True (default) the output is normalized by the number
-        of degrees of freedom, with a target value of 1.0 for a good fit.
-
-        If *compact* is True (default) then add the constraints penalty
-        to chisq before normalizing, otherwise show the constraints
-        penalty separately, along with the list of any failing constraints.
 
         If *nllf* is provided then use that instead of calling the model
         evaluator. Fail if *compact* is False.
@@ -649,42 +656,41 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
 
         Parameter priors, if any, are treated as independent models
         in the total nllf.  The constraint value is displayed separately.
+
+        **Deprecated**: *norm:bool* and *compact:bool* are ignored.
         """
         chisq_norm, chisq_err = nllf_scale(dof=self.dof, npars=len(self._parameters), norm=norm)
-
+        failing = []
         if nllf is None:
-            pparameter, pconstraints, pmodel, failing_constraints = self._nllf_components()
-            nllf = pmodel + pparameter + pconstraints if compact else pmodel + pparameter
+            pparameter, pconstraints, pmodel, failing = self._nllf_components()
+            nllf = pmodel + pparameter + pconstraints + (self.penalty_nllf if failing else 0)
+            # print(f"{pmodel=} {pparameter=} {pconstraints=} {nllf=} {chisq_norm=} {chisq_err=}")
+        if failing:
+            # Text is used in a context like f"χ² = {text}". We are not printing the list
+            # of failing constraints since parameter names are arbitrarily long.
+            text = "NaN [out of bounds]"
         else:
-            assert compact is True
-        # print(f"{pmodel=} {pparameter=} {pconstraints=} {nllf=} {chisq_norm=} {chisq_err=}")
-        text = format_uncertainty(nllf * chisq_norm, chisq_err)
-        if not compact:
-            if pconstraints > 0.0:
-                text += f" constraints={pconstraints}"
-            if len(failing_constraints) > 0:
-                text += " failing_constraints=%s" % str(failing_constraints)
+            text = format_uncertainty(nllf * chisq_norm, chisq_err)
 
         # return f"{text} p={self.getp()} => {pmodel:.15e}"
         return text
 
     def _nllf_components(self) -> util.Tuple[float, float, float, util.List[str]]:
         try:
-            pparameter, failing_parameter_constraints = self.parameter_nllf()
+            pparameter, bad_priors = self.parameter_nllf()
+            pconstraints, bad_constraints = self.constraints_nllf()
+            failing = bad_priors + bad_constraints
+            # If constraints are failing don't bother to compute nllf.
+            # Using pvalue = zero rather than NaN so that handling of penalties is easier.
+            pmodel = self.model_nllf() if len(failing) == 0 else 0.0
+
             if isnan(pparameter):
                 # TODO: make sure errors get back to the user
                 info = ["Parameter nllf is wrong"]
                 info += ["%s %g" % (p, p.nllf()) for p in self._priors]
                 logging.error("\n  ".join(info))
-            pconstraints, failing_constraints = self.constraints_nllf()
-            failing_constraints += failing_parameter_constraints
-            # Note: for hard constraints (which return inf) avoid computing
-            # model even if soft_limit is inf by using strict comparison
-            # since inf <= inf is True but inf < inf is False.
-            penalty_nllf = self.penalty_nllf if self.penalty_nllf is not None else np.inf
-            pmodel = self.model_nllf() if len(failing_constraints) == 0 else penalty_nllf
 
-            return pparameter, pconstraints, pmodel, failing_constraints
+            return pparameter, pconstraints, pmodel, failing
         except Exception:
             # TODO: make sure errors get back to the user
             info = (traceback.format_exc(), parameter.summarize(self._parameters))
@@ -744,10 +750,11 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
             elif not np.isfinite(p.prior.nllf(value)):
                 broken.append(f"{p}={value} is outside {p.prior}")
 
-        # Check other constraints
-        broken.extend([f"constraint {c} is unsatisfied" for c in self.constraints if float(c) == inf])
-        if self._constraints_function() == inf:
-            broken.append("user constraint function is unsatisfied")
+        # Check other constraints.
+        broken.extend([f"{c} fails" for c in self.constraints if float(c) > 0])
+        # Show broken constraints. Note that warnings.warn() will only show up once,
+        # so this acts as a pre-check of the model when running in batch mode on the
+        # command line.
         if len(broken) > 0:
             warnings.warn("Unsatisfied constraints: [%s]" % (",\n".join(broken)))
 
@@ -804,9 +811,7 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
         """Return the cost function for all constraints"""
         failing = []
         nllf = 0.0
-        nllf = self._constraints_function()
-        if nllf == np.inf:
-            failing.append("user constraints function")
+        # Process the list of inequality constraints
         for c in self.constraints:
             # TODO: convert to list of residuals for Levenberg-Marquardt
             c_nllf = float(c) ** 2
@@ -878,7 +883,7 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
             if backend is None:
                 continue
 
-            # TODO: duplicated in bumps.webserver.server.api._get_data_plot_mpl()
+            # TODO: duplicated in bumps.api._get_data_plot_mpl()
             if self.num_models > 1:
                 chisq_str = fitness_chisq_str(f)
                 chisq = f"χ² = {chisq_str}; overall {overall_chisq_str}"
@@ -953,8 +958,8 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
             ha, va = "right", "top"
             fig.text(x, y, chisq, transform=transform, va=va, ha=ha, fontsize=fontsize)
 
-            # pylab.suptitle("Model %d - %s" % (i, f.name))
-            # pylab.text(0.01, 0.01, "chisq=%s" % fitness_chisq_str(f), transform=pylab.gca().transAxes)
+            # plt.suptitle("Model %d - %s" % (i, f.name))
+            # plt.text(0.01, 0.01, "chisq=%s" % fitness_chisq_str(f), transform=plt.gca().transAxes)
             if outfile:
                 plt.savefig(outfile, format="png")
 
@@ -965,6 +970,72 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
 
     def __setstate__(self, state):
         self.__dict__ = state
+
+
+PARS_PATTERN = re.compile(r"^(?P<label>.*) (?P<value>[^ ]*)\n$")
+
+
+def dump_pars(problem, path: Path, filename: str):
+    # TODO: Include non-fitted parameters in .par file?
+    # TODO: replaces api._write_pars
+    pardata = "".join(f"{name} {value:.15g}\n" for name, value in zip(problem.labels(), problem.getp()))
+    with open(path / filename, "wt") as fd:
+        fd.write(pardata)
+
+
+def load_pars(problem, path):
+    """
+    Reload individual parameter values from a saved .par file.
+
+    If the label does not exist in the file, use the value from the model
+    as the default value. Ignore labels that do not exist in the model. In
+    that way we can load parameters from an old fit with minimal fuss, even
+    as we add, delete and move parameters in the model. If any parameters
+    are missing, set *problem.undefined* to the a boolean index of the
+    undefined parameters.
+
+    There is an interaction with --init=eps and the par file. If any parameters
+    are missing from the par file they will be randomized across the
+    entire parameter range using the equivalent of --init=lhs. That means
+    you can drop a # at the beginning of the line in the .par file
+    and that parameter will be shuffled on restart, with the remaining
+    parameters starting near the initial value.
+    """
+    # WARNING: Labels are not unique! Need to track multiple instances of
+    # the same label.
+    path = Path(path)
+    if not path.is_file():
+        path = path / (problem.name + ".par")
+    if not path.is_file():
+        raise ValueError("Parameter file {path} does not exist.")
+    labels = problem.labels()
+    targets = {label: [] for label in labels}
+    with open(path, "rt") as fid:
+        for line in fid:
+            m = PARS_PATTERN.match(line)
+            label, value = m.group("label"), float(m.group("value"))
+            # Accumulate values for labels only if they appear in the model.
+            if label in targets:
+                targets[label].append(value)
+
+    # Populate model with named parameters in the order they occur in the
+    # parameter file. Identify the missing parameters if any, adding them
+    # to the the problem definition as an optional "undefined" attribute with
+    # one bit for each parameter. This ugly hack is to support a previous
+    # ugly hack in which undefined parameters are initialized with LHS but
+    # defined parameters are initialized with eps, cov or random.
+    # TODO: find a better way to "free" parameters on --pars.
+    # TODO: find a way to "free" parameters on --resume.
+    values, undefined = [], []
+    for label, default_value in zip(labels, problem.getp()):
+        remaining = targets[label]
+        is_empty = not remaining
+        # popping the next value from remaining modifies targets[label]
+        values.append(default_value if is_empty else remaining.pop(0))
+        undefined.append(is_empty)
+    problem.setp(np.asarray(values))
+    if any(undefined):
+        problem.undefined = np.asarray(undefined)
 
 
 # TODO: consider adding nllf_scale to FitProblem.
@@ -1013,9 +1084,9 @@ def load_problem(path: Path | str, args: list[str] | None = None):
     or a previously saved problem, serialized as .json, .cloudpickle, .pickle or .dill
 
     *args* are any additional arguments to the model.  The sys.argv
-    variable will be set such that *sys.argv[1:] == model_options*.
+    variable will be set such that *sys.argv[1:] == args*.
     """
-    from .webview.server.state_hdf5_backed import SERIALIZER_EXTENSIONS, deserialize_problem_bytes
+    from .state import SERIALIZER_EXTENSIONS, deserialize_problem_bytes
 
     path = Path(path)
     table = {f".{ext}": method for method, ext in SERIALIZER_EXTENSIONS.items()}
@@ -1028,9 +1099,9 @@ def load_problem(path: Path | str, args: list[str] | None = None):
         problem = deserialize_problem_bytes(data, method)
     # TODO: what is problem.path when we are deserializing from a session file?
     problem.path = str(path.resolve())
-    if not hasattr(problem, "name"):
+    if not getattr(problem, "name", None):
         problem.name = path.stem
-    if not hasattr(problem, "title"):
+    if not getattr(problem, "title", None):
         problem.title = path.name
 
     # Guard against the user changing parameters after defining the problem.

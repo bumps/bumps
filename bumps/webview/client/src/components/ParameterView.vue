@@ -26,6 +26,7 @@ type parameter_info = {
   min_str: string;
   max_str: string;
   active?: boolean;
+  slot_repr: string;
 };
 
 // const parameters = ref<parameter_info[]>([]);
@@ -95,6 +96,7 @@ async function setFittable(event: MouseEvent, index: number) {
         </td>
         <td>
           {{ param.name }}
+          <p v-if="!param.writable && param.slot_repr" class="slot-repr">{{ param.slot_repr }}</p>
           <div v-if="tag_filter?.show_tags">
             <span
               v-for="tag in param.tags"
@@ -124,6 +126,15 @@ async function setFittable(event: MouseEvent, index: number) {
 
 <style scoped>
 table {
-  white-space: nowrap;
+  width: 100%;
+  white-space: no-wrap;
+}
+
+.slot-repr {
+  margin-top: 0;
+  margin-bottom: 0;
+  font-style: italic;
+  font-size: smaller;
+  word-break: break-word;
 }
 </style>

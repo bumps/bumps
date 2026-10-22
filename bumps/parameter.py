@@ -86,14 +86,14 @@ class Normal:
 
 # Leave out of schema for now.
 # TODO: determine if this is used by anyone
-# @dataclass(init=False)
+@dataclass
 class UniformSoftBounded:
     """Uniform distribution with error-function PDF on boundaries"""
 
     std: float = field_desc("width of the edge distribution")
 
 
-DistributionType = Union[Uniform, Normal]  # , UniformSoftBounded]
+DistributionType = Union[Uniform, Normal, UniformSoftBounded]
 
 
 class OperatorMixin:
@@ -169,6 +169,12 @@ class Calculation(ValueProtocol):  # the name Function is taken (though deprecat
 
     def __float__(self):
         return self.value
+
+    def __repr__(self):
+        return f'Calculation(description="{self.description}")'
+
+    def __str__(self):
+        return self.description
 
     def set_function(self, function):
         self._function = function
@@ -290,11 +296,11 @@ class Parameter(ValueProtocol, SupportsPrior):
     the hard limits are restrictions on the value imposed by the model.
     For example, the thickness of a layer must be zero or more.
 
-    Any additional keyword arguments are preserved as properties of the
-    parameter. For example, *tip* and *units* for decorating an input form
-    in the GUI:
+    *discrete* is True if the parameter value must be an integer.
 
-         p = Parameter(10, name="width", units="cm", tip="Width of sample")
+    *tags* are user-supplied labels that can be used to group parameters together
+    for display or for setting values, and are used in the GUI for filtering
+    parameters.
 
     """
 
@@ -571,7 +577,6 @@ class Parameter(ValueProtocol, SupportsPrior):
         distribution: DistributionType = Uniform(),
         discrete: bool = False,
         tags: Optional[List[str]] = None,
-        **kw,
     ):
         # Check if we are started with value=range or bounds=range; if we
         # are given bounds, then assume this is a fitted parameter, otherwise
@@ -625,11 +630,6 @@ class Parameter(ValueProtocol, SupportsPrior):
         self.fixed = fixed
         self.discrete = discrete
 
-        # Store whatever values the user needs to associate with the parameter.
-        # For example, models can set units and tool tips so the user interface
-        # has something to work with.
-        for k, v in kw.items():
-            setattr(self, k, v)
         self.prior = None  # to be filled by model_reset
 
     def randomize(self, rng=None):
@@ -692,20 +692,13 @@ class Parameter(ValueProtocol, SupportsPrior):
 
 
 def tag_all(parameter_tree, tag, remove=False):
-    if isinstance(parameter_tree, dict):
-        tag_all([item for item in parameter_tree.values()], tag, remove=remove)
-    elif hasattr(parameter_tree, "add_tag"):
+    for p in unique(parameter_tree):
         if remove:
-            parameter_tree.remove_tag(tag)
+            if hasattr(p, "remove_tag"):
+                p.remove_tag(tag)
         else:
-            parameter_tree.add_tag(tag)
-    elif hasattr(parameter_tree, "parameters"):
-        tag_all(parameter_tree.parameters(), tag, remove=remove)
-    elif hasattr(parameter_tree, "__iter__"):
-        for item in parameter_tree:
-            tag_all(item, tag, remove=remove)
-    else:
-        warnings.warn(f"parameter tree should have only list, object and Parameter items: {parameter_tree}")
+            if hasattr(p, "add_tag"):
+                p.add_tag(tag)
 
 
 def untag_all(parameter_tree, tag: Optional[str] = None):
@@ -1635,7 +1628,7 @@ class Constraint:
 
     def __float__(self):
         """return a float value that can be differentiated"""
-        return 0.0 if self.satisfied else abs(float(self.a) - float(self.b))
+        return 0.0 if self.satisfied else (float(self.a) - float(self.b)) ** 2
 
     def __str__(self):
         return "(%s %s %s)" % (self.a, self.op, self.b)

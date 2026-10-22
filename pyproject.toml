@@ -18,7 +18,7 @@ dependencies = [
     'plotly',
     'mpld3',
     'msgpack',
-    'graphlib_backport; python_version < "3.9"',
+    'uncertainties',
 ]
 classifiers = [
     'Development Status :: 4 - Beta',
@@ -32,7 +32,7 @@ classifiers = [
     'Topic :: Scientific/Engineering :: Chemistry',
     'Topic :: Scientific/Engineering :: Physics',
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 [project.optional-dependencies]
 dev = [
@@ -98,7 +98,7 @@ method = "smallest"
 file = "bumps/_version.py"
 
 [project.scripts]
-bumps = "bumps.webview.server.cli:main"
+bumps = "bumps.cli:main"
 
 [tool.pytest.ini_options]
 # TODO: remove --assert=plain when https://github.com/scipy/scipy/issues/22236 is resolved

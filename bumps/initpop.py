@@ -22,11 +22,14 @@ import math
 import numpy as np
 from numpy import diag, empty, isinf, isfinite, clip, inf
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from numpy.typing import NDArray
 
+if TYPE_CHECKING:
+    from .fitproblem import FitProblem
 
-def generate(problem, init="eps", pop=10, use_point=True, **options):
+
+def generate(problem: "FitProblem", init="eps", pop=10, use_point=True, **options):
     # type: (Any, str, int, bool, ...) -> NDArray
     """
     Population initializer.
@@ -53,7 +56,7 @@ def generate(problem, init="eps", pop=10, use_point=True, **options):
     if init == "random":
         population = random_init(pop_size, initial, bounds, use_point=use_point, problem=problem)
     elif init == "cov":
-        cov = problem.cov()
+        cov = problem.cov(initial)
         population = cov_init(pop_size, initial, bounds, use_point=use_point, cov=cov)
     elif init == "lhs":
         population = lhs_init(pop_size, initial, bounds, use_point=use_point)
@@ -84,7 +87,7 @@ def lhs_init(n, initial, bounds, use_point=False):
     satisfies the LHS condition, and you can see that the guarantees are
     not very strong.  A better methods, similar to sudoku puzzles, would
     guarantee coverage in each block of the matrix, but this is not
-    yet implmeneted.
+    yet implemented.
 
     If *use_point* is True, then the current value of the parameters
     is returned as the first point in the population, preserving the the

@@ -9,8 +9,8 @@ import numpy as np
 from numpy import inf
 
 from bumps import initpop
-from bumps.cli import load_best, load_model
 from bumps.dream import stats, views
+from bumps.fitproblem import load_problem, load_pars
 
 
 class Draw(object):
@@ -157,8 +157,8 @@ def log_evidence(logls, betas, fburnin=0.1):
     isort = np.argsort(betas)
     betas = betas[isort]
     mean_logls = mean_logls[isort]
-    lnZ = np.trapz(mean_logls, betas)
-    lnZ2 = np.trapz(mean_logls[::2], betas[::2])
+    lnZ = np.trapezoid(mean_logls, betas)
+    lnZ2 = np.trapezoid(mean_logls[::2], betas[::2])
 
     return lnZ, np.abs(lnZ - lnZ2)
 
@@ -296,9 +296,9 @@ def main():
     parser.add_argument("modelopts", type=str, nargs="*", help="options passed to the model")
     opts = parser.parse_args()
 
-    problem = load_model(opts.modelfile[0], model_options=opts.modelopts)
+    problem = load_problem(opts.modelfile[0], model_options=opts.modelopts)
     if opts.pars:
-        load_best(problem, opts.pars)
+        load_pars(problem, opts.pars)
     dim = len(problem.getp())
     steps = opts.steps if opts.samples is None else (opts.samples + dim * opts.npop - 1) // (dim * opts.npop)
     preserved, state, tail = load_state(opts, dim, steps)

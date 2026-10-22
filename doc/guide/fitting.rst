@@ -540,7 +540,7 @@ tempering (fit=pt) extension to DREAM.  Whereas DREAM runs with a
 constant temperature, $T=1$, parallel tempering runs with multiple
 temperatures concurrently.   The high temperature points are able to
 walk up steep hills in the search space, possibly crossing over into a
-neighbouring valley.  The low temperature points agressively seek the
+neighbouring valley.  The low temperature points aggressively seek the
 nearest local minimum, rejecting any proposed point that is worse than
 the current.  Differential evolution helps adapt the steps to the shape
 of the search space, increasing the chances that the random step will be

@@ -2,7 +2,117 @@
 Pylab plotting utilities.
 """
 
-__all__ = ["auto_shift", "coordinated_colors", "dhsv", "next_color", "plot_quantiles", "form_quantiles"]
+__all__ = [
+    "config_matplotlib",
+    "auto_shift",
+    "coordinated_colors",
+    "dhsv",
+    "next_color",
+    "plot_quantiles",
+    "form_quantiles",
+]
+
+
+def set_mplconfig(appdatadir):
+    r"""
+    Point the matplotlib config dir to %LOCALAPPDATA%\{appdatadir}\mplconfig.
+    """
+    import os
+    import sys
+
+    if hasattr(sys, "frozen"):
+        if os.name == "nt":
+            mplconfigdir = os.path.join(os.environ["LOCALAPPDATA"], appdatadir, "mplconfig")
+        elif sys.platform == "darwin":
+            mplconfigdir = os.path.join(os.path.expanduser("~/Library/Caches"), appdatadir, "mplconfig")
+        else:
+            return  # do nothing on linux
+        mplconfigdir = os.environ.setdefault("MPLCONFIGDIR", mplconfigdir)
+        if not os.path.exists(mplconfigdir):
+            os.makedirs(mplconfigdir)
+
+
+def config_matplotlib(backend=None):
+    """
+    Setup matplotlib to use a particular backend.
+
+    The backend should be 'WXAgg' for interactive use, or 'Agg' for batch.
+    This distinction allows us to run in environments such as cluster computers
+    which do not have wx installed on the compute nodes.
+
+    This function must be called before any imports to matplotlib.  To allow
+    this, modules should not import matplotlib at the module level, but instead
+    import it for each function/method that uses it.  Exceptions can be made
+    for modules which are completely dedicated to plotting, but these modules
+    should never be imported at the module level.
+    """
+    import os
+    import sys
+    import matplotlib as mpl
+
+    # When running from a frozen environment created by py2exe, we will not
+    # have a range of backends available, and must set the default to WXAgg.
+    # With a full matplotlib distribution we can use whatever the user prefers.
+    if hasattr(sys, "frozen"):
+        if "MPLCONFIGDIR" not in os.environ:
+            raise RuntimeError(r"MPLCONFIGDIR should be set to e.g., %LOCALAPPDATA%\YourApp\mplconfig")
+        if backend is None:
+            backend = "WXAgg"
+
+    ## CRUFT: check that backend is valid, trying alternates if an import fails
+    # if backend is None:
+    #    backend = os.environ.get('MPLBACKEND', mpl.rcParams['backend'])
+    # import importlib
+    # for name in (backend, 'MacOSX', 'Qt5Agg', 'Qt4Agg', 'Gtk3Agg', 'TkAgg', 'WXAgg'):
+    #    path = 'matplotlib.backends.backend_' + name.lower()
+    #    try:
+    #        importlib.import_module(path)
+    #        backend = name
+    #        break
+    #    except ImportError:
+    #        backend = None
+
+    # Specify the backend to use for plotting and import backend dependent
+    # classes.  This must be done before importing pyplot to have an
+    # effect.  If no backend is given, let pyplot use the default.
+    if backend is not None:
+        mpl.use(backend)
+
+    # Disable interactive mode so that plots are only updated on show() or
+    # draw(). The interactive function must be called before importing pyplot,
+    # otherwise it will have no effect.
+    mpl.interactive(False)
+
+    # configure the plot style
+    line_width = 1
+    pad = 2
+    font_family = "Arial" if os.name == "nt" else "sans-serif"
+    font_size = 12
+    plot_style = {
+        "xtick.direction": "in",
+        "ytick.direction": "in",
+        "lines.linewidth": line_width,
+        "axes.linewidth": line_width,
+        "xtick.labelsize": font_size,
+        "ytick.labelsize": font_size,
+        "xtick.major.size": 5,
+        "ytick.major.size": 5,
+        "xtick.minor.size": 2.5,
+        "ytick.minor.size": 2.5,
+        "xtick.major.width": line_width,
+        "ytick.major.width": line_width,
+        "xtick.minor.width": line_width,
+        "ytick.minor.width": line_width,
+        "xtick.major.pad": pad,
+        "ytick.major.pad": pad,
+        "xtick.top": True,
+        "ytick.right": True,
+        "font.size": font_size,
+        "font.family": font_family,
+        "svg.fonttype": "none",
+        "savefig.dpi": 100,
+    }
+    mpl.rcParams.update(plot_style)
 
 
 def auto_shift(offset):
@@ -20,16 +130,16 @@ def auto_shift(offset):
         plot(x, y, trans=trans)
     """
     from matplotlib.transforms import ScaledTranslation
-    import pylab
+    import matplotlib.pyplot as plt
 
-    ax = pylab.gca()
+    ax = plt.gca()
     if ax.lines and hasattr(ax, "_auto_shift"):
         ax._auto_shift += offset
     else:
         ax._auto_shift = 0
-    trans = pylab.gca().transData
+    trans = plt.gca().transData
     if ax._auto_shift:
-        trans += ScaledTranslation(0, ax._auto_shift / 72.0, pylab.gcf().dpi_scale_trans)
+        trans += ScaledTranslation(0, ax._auto_shift / 72.0, plt.gcf().dpi_scale_trans)
     return trans
 
 
@@ -49,10 +159,10 @@ def next_color(axes=None):
         # Draw the theory line with the same color as the data, but darker
         plt.plot(x, y, '-', color=dhsv(color, dv=-0.2))
     """
-    import pylab
+    import matplotlib.pyplot as plt
 
     if axes is None:
-        axes = pylab.gca()
+        axes = plt.gca()
     lines = axes._get_lines
     try:
         base = lines.get_next_color()
@@ -145,13 +255,13 @@ def plot_quantiles(x, y, contours, color, alpha=None, axes=None):
 
 
 def _plot_quantiles(x, q, color, alpha, axes=None):
-    import pylab
+    import matplotlib.pyplot as plt
 
     # print "p",p
     # print "q",q[:,:,0]
     # print "y",y[:,0]
     if axes is None:
-        axes = pylab.gca()
+        axes = plt.gca()
     if alpha is None:
         alpha = 2.0 / (len(q) + 1)
     edgecolor = dhsv(color, ds=-(1 - alpha), dv=(1 - alpha))

@@ -44,12 +44,12 @@ except ImportError:
     warnings.warn("h5py is not available; can't access session files")
 
 from bumps import __version__
-from bumps.serialize import serialize, deserialize
-from bumps.serialize import serialize_bytes, deserialize_bytes
-from bumps.util import get_libraries
+from .fitters import FIT_DEFAULT_ID
 from .logger import logger
-
-from .fit_options import lookup_fitter, DEFAULT_FITTER_ID
+from .options import lookup_fitter
+from .serialize import serialize, deserialize
+from .serialize import serialize_bytes, deserialize_bytes
+from .util import get_libraries
 
 if TYPE_CHECKING:
     import bumps
@@ -74,10 +74,15 @@ TopicNameType = Literal[
 
 @dataclass(frozen=True)
 class UNDEFINED_TYPE:
+    """Type for the UNDEFINED singleton."""
+
     pass
 
 
 UNDEFINED = UNDEFINED_TYPE()
+"""
+Singleton value which is undefined. This is different from a value which is present but None."
+"""
 
 
 def now_string():
@@ -553,7 +558,7 @@ class FitResult:
     # TODO: Save labels in fit results so we don't need to walk the problem definition?
     # TODO: Save the initial value in the problem so users can reset after a fit?
     # TODO: Add the following to FitResult:
-    method: str = DEFAULT_FITTER_ID  # => shared.selected_fitter
+    method: str = FIT_DEFAULT_ID  # => shared.selected_fitter
     """Fitting method"""
     options: Dict[str, Any] = field(default_factory=dict)  # => shared.fitter_settings
     """Options used to run the fitters"""
@@ -633,7 +638,7 @@ class FitResult:
                 fitter = lookup_fitter(self.method)
                 self.fit_state = fitter.h5load(state_group)
             else:
-                self.method = DEFAULT_FITTER_ID
+                self.method = FIT_DEFAULT_ID
                 self.fit_state = None
 
 
@@ -642,14 +647,14 @@ class State:
     Manage the state for a bumps server session.
 
     There is a primary state object for the current webview instance defined
-    in webview.server.api. Temporary state objects are created to save
+    in bumps.api. Temporary state objects are created to save
     the temporary fit results as a session file.
     """
 
     # These attributes are ephemeral, not to be serialized/stored:
     app_name: str = "bumps"
     app_version: str = __version__
-    client_path: Path = Path(__file__).parent.parent / "client"
+    client_path: Path = Path(__file__).parent / "webview" / "client"
     hostname: str
     port: int
     parallel: int = 0
@@ -670,7 +675,7 @@ class State:
     problem: ProblemState
     fitting: FitResult
     history: History
-    topics: Dict[TopicNameType, "deque[Dict]"]
+    topics: Dict[TopicNameType, deque[dict]]
     shared: "SharedState"
     mapper: Optional[BaseMapper] = None
 
@@ -786,6 +791,7 @@ class State:
 
     def save(self):
         if self.shared.session_output_file not in (None, UNDEFINED):
+            # print(f"Saving session file (pid={os.getpid()})...")
             pathlist = self.shared.session_output_file["pathlist"]
             filename = self.shared.session_output_file["filename"]
             full_path = Path(*pathlist) / filename
@@ -944,6 +950,7 @@ class CustomPlotsAvailable(TypedDict):
 
 
 Timestamp = NewType("Timestamp", str)
+"""ISO8601 time string"""
 
 
 def get_custom_plots_available(problem: "bumps.fitproblem.FitProblem"):

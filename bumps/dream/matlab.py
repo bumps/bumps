@@ -48,7 +48,7 @@ you do in matlab.  For example::
 
 
 You can now use various dream visualization tools or use the matlab-like
-plotting functions from pylab::
+plotting functions from matplotlib::
 
     In [4]: out.state.save('modeloutput')
     In [5]: out.state.plot_state()

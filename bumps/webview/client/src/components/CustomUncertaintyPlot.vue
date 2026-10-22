@@ -46,7 +46,7 @@ const { draw_requested, drawing_busy } = setupDrawLoop(
   "updated_uncertainty",
   props.socket,
   fetch_and_draw,
-  panel_title
+  panel_title,
 );
 
 async function export_clicked() {

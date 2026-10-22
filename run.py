@@ -9,6 +9,7 @@ Usage:
 
 import os
 import sys
+from contextlib import contextmanager
 
 
 def addpath(path):
@@ -23,9 +24,6 @@ def addpath(path):
         PYTHONPATH = path
     os.environ["PYTHONPATH"] = PYTHONPATH
     sys.path.insert(0, path)
-
-
-from contextlib import contextmanager
 
 
 @contextmanager
@@ -64,6 +62,6 @@ if __name__ == "__main__":
 
     multiprocessing.freeze_support()
     prepare()
-    import bumps.cli
+    from bumps.gui.old_cli import main as old_main
 
-    bumps.cli.main()
+    old_main()

@@ -82,6 +82,10 @@ view the fit results use::
 
     bumps --session=fit.h5
 
+To run on a cluster using MPI use::
+
+    mpirun bumps --mpi ...
+
 There are many command line options for controlling the fit. For a complete list use::
 
     bumps -h
@@ -94,7 +98,7 @@ from within the notebook, providing a more integrated experience for users who a
 
 You will need to set up Jupyter. You can install jupyter into your bumps
 environment with pip and run the Jupyter server from there. If you are using
-jupyterhub, you can install and run ipykernel in your bumps environment to make
+JupyterHub, you can install and run ipykernel in your bumps environment to make
 it available::
 
     pip install ipykernel
