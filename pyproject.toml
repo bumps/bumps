@@ -63,6 +63,7 @@ extend-exclude = [
     "bumps/webview/client.pyi",
     "doc/pylit.py",
     "extra/platform_scripts/*",
+    "doc/notebooks/*",
 ]
 
 [tool.ruff.lint.per-file-ignores]

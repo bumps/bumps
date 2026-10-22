@@ -397,7 +397,7 @@ async def start_app(
     else:
         print(f"webserver started: {get_server_url()}")
 
-    return api
+    return None
 
 
 def server_is_running():
@@ -434,7 +434,26 @@ def display_bumps(width: Union[str, int] = "100%", height: Union[str, int] = 120
 
     :param width: The width of the iframe.
     :param height: The height of the iframe.
+    :param single_panel: The title of the panel to display.
+
+    Note that the single panel mode shows only that panel. It does not show the menu bar or
+    the panel tabs, so the panel cannot be changed.
     """
+    try:
+        # If running in a colab notebook then use the google colab proxy to display webview
+        from google.colab import output
+
+        port = getattr(api.state, "port", None)
+        if port is None:
+            raise ValueError("The web server has not been started.")
+        path = "/" if not single_panel else f"/?single_panel={single_panel}"
+        # TODO: set cache_in_notebook=True if the displayed content should be cached in the
+        # notebook for offline viewing.
+        output.serve_kernel_port_as_iframe(port, path=path, width=width, height=height)
+        return
+    except ImportError:
+        pass
+
     from IPython.display import display, IFrame
 
     url = get_server_url()
@@ -458,13 +477,20 @@ def open_tab_link(single_panel=None) -> None:
     """
     from IPython.display import display, Markdown
 
-    url = get_server_url()
-    if single_panel is not None:
-        url += f"?single_panel={single_panel}"
+    # Set the text for clickable url (or nothing if running on colab)
+    try:
+        # Ignore the unused import in pylance and ruff
+        import google.colab  # noqa: F401  # type: ignore
 
-    src = f"""
-Click {url} to open webview in a browser.
+        link_text = ""
+    except ImportError:
+        url = get_server_url()
+        if single_panel is not None:
+            url += f"?single_panel={single_panel}"
 
+        link_text = f"Click {url} to open webview in a browser.\n\n"
+
+    src = f"""{link_text}
 Enter `bp.display_bumps()` to open in a jupyter notebook cell.
 
 Enter `bp.help()` for a list of useful notebook commands.
