@@ -27,7 +27,7 @@ import asyncio
 import contextlib
 import inspect
 import json
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncIterator
 
 import socketio
 
@@ -161,7 +161,7 @@ _populate_client_api()
 
 
 @contextlib.asynccontextmanager
-async def remote_bumps(url: str | None = None, **kwargs) -> AsyncGenerator[BumpsClient, None]:
+async def remote_bumps(url: str | None = None, **kwargs) -> AsyncIterator[BumpsClient]:
     """
     Open a client connection to a remote bumps server.
 

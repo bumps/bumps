@@ -184,7 +184,7 @@ def process_one(module_path: str):
         program = "bumps/extra/mod_stubs.py"
         # 4. Write to disk
         with open(pyi_file_path, "w", encoding="utf-8") as f:
-            f.write(f'# Generated using "python {program} {module_path}". ***DO NOT EDIT***')
+            f.write(f'# Generated using "python {program} {module_path}". ***DO NOT EDIT***\n')
             f.write(content)
 
         print(f"Successfully created stub: {pyi_file_path}")

@@ -1,17 +1,9 @@
-# Generated using "python bumps/extra/mod_stubs.py bumps.webview.client". ***DO NOT EDIT***import typing
+# Generated using "python bumps/extra/mod_stubs.py bumps.webview.client". ***DO NOT EDIT***
+import typing
 from typing import Any, NoneType
 
-class AsyncGenerator:
+class AsyncIterator:
     """"""
-    async def aclose() -> Any:
-        """Raise GeneratorExit inside coroutine.
-        """
-    async def asend(value: Any) -> Any:
-        """Send a value into the asynchronous generator.
-Return next yielded value or raise StopAsyncIteration."""
-    async def athrow(typ: Any, val: Any = None, tb: Any = None) -> Any:
-        """Raise an exception in the asynchronous generator.
-Return next yielded value or raise StopAsyncIteration."""
 class BumpsClient:
     """Proxy for the bumps server api with methods for each api call.
 
@@ -126,7 +118,7 @@ arbitrary code execution and carry the same caveat as
 ``set_serialized_problem``."""
     async def wait_for_fit(timeout: float = 30) -> Any:
         """Poll active_fit until empty (fit complete) or timeout."""
-def remote_bumps(url: str | None = None, **kwargs: Any) -> collections.abc.AsyncGenerator[bumps.webview.client.BumpsClient, None]:
+def remote_bumps(url: str | None = None, **kwargs: Any) -> collections.abc.AsyncIterator[bumps.webview.client.BumpsClient]:
     """Open a client connection to a remote bumps server.
 
 This is an async context manager used as:
