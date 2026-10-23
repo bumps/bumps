@@ -58,9 +58,9 @@ make the code more difficult to understand later, and can lead to
 unexpected results when moving code around to other files.  The alternative
 pattern to use is::
 
-    import bumps.names as bmp
+    import bumps.names as bp
     ...
-    problem = bmp.FitProblem(models)
+    problem = bp.FitProblem(models)
 
 This documents to the reader unfamiliar with your code (such as you, dear
 reader, when looking at your model files two years from now) exactly where

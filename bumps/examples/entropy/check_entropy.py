@@ -8,7 +8,7 @@
 #
 # By comparing the entropy of the prior distribution (usually a box uniform
 # distribution with entropy $\sum_{i=1}^n \log(w_i)$ where $w_i$ is the
-# range on parameter $i$ and $n$ is the number of paramters, but maybe
+# range on parameter $i$ and $n$ is the number of parameters, but maybe
 # lower if explicit priors are given for any of the parameters based on
 # information from other sources) to the entropy computed from the posterior,
 # you can estimate the number of bits of information from the fit to the data.

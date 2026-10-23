@@ -490,6 +490,17 @@ def format_duration_demo():
         print(f"{seconds:>12.3f}s → {format_duration(seconds)}")
 
 
+def examples_path():
+    """
+    Path to the examples directory.
+    """
+    import bumps
+    from importlib.resources import files
+
+    path = files(bumps) / "examples"
+    return path
+
+
 if __name__ == "__main__":
     format_duration_demo()
     # test_format_uncertainty()
