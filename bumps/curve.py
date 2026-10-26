@@ -558,7 +558,7 @@ class PoissonCurve(Curve):
         theory = self.theory()
         if (theory <= 0).any():
             return 1e308
-        return -sum(self.y * log(theory) - theory) + self._logfactysum
+        return -np.sum(self.y * log(theory) - theory) + self._logfactysum
 
     def simulate_data(self, noise=None):
         theory = self.theory()
@@ -566,3 +566,16 @@ class PoissonCurve(Curve):
         self.dy = sqrt(self.y) + (self.y == 0)
         self._logfacty = logfactorial(self.y)
         self._logfactysum = np.sum(self._logfacty)
+
+
+def test_poisson_curve_multiple_curves():
+    for num_curves in [1, 2, 3]:
+        rates = np.full((num_curves, 4), 2.0)
+        counts = np.full((num_curves, 4), 2)
+        model = PoissonCurve(lambda x: rates, np.arange(4), counts)
+        value = model.nllf()
+        assert np.ndim(value) == 0
+        np.testing.assert_allclose(value, num_curves * 4 * (2 - log(2)))
+
+        flattened = PoissonCurve(lambda x: x, rates.ravel(), counts.ravel())
+        np.testing.assert_allclose(value, flattened.nllf())
