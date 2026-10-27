@@ -532,6 +532,7 @@ class PoissonCurve(Curve):
 
     The nllf is calculated using Poisson probabilities, but the curve itself
     is displayed using the approximation that $\sigma_y \approx \sqrt(y)$.
+    A zero predicted rate is valid when the corresponding observed count is zero.
 
     Note that the *dy* argument is ignored. It is only present for deserialization
     of the Curve base class.
@@ -557,8 +558,13 @@ class PoissonCurve(Curve):
     def nllf(self):
         theory = self.theory()
         if (theory <= 0).any():
-            return 1e308
-        return -np.sum(self.y * log(theory) - theory) + self._logfactysum
+            if ((theory < 0) | ((theory == 0) & (self.y > 0))).any():
+                return 1e308
+            # support y log(theory) = 0 when y = theory = 0
+            log_theory = log(np.where(theory == 0, 1.0, theory))
+        else:
+            log_theory = log(theory)
+        return -np.sum(self.y * log_theory - theory) + self._logfactysum
 
     def simulate_data(self, noise=None):
         theory = self.theory()
@@ -566,6 +572,22 @@ class PoissonCurve(Curve):
         self.dy = sqrt(self.y) + (self.y == 0)
         self._logfacty = logfactorial(self.y)
         self._logfactysum = np.sum(self._logfacty)
+
+
+def test_poisson_curve_zero_rates():
+    for rates, counts, expected in [
+        ([0.0], [0], 0.0),
+        ([0.0, 0.0], [0, 0], 0.0),
+        ([0.0, 1.0, 2.0], [0, 1, 2], 3 - log(2)),
+        ([2.0, 0.0], [0, 0], 2.0),
+        ([0.0], [1], 1e308),
+        ([-1.0], [0], 1e308),
+        ([-1.0, 2.0], [0, 2], 1e308),
+    ]:
+        rates, counts = np.asarray(rates), np.asarray(counts)
+        model = PoissonCurve(lambda x: x, rates, counts)
+        with np.errstate(divide="raise", invalid="raise"):
+            np.testing.assert_allclose(model.nllf(), expected)
 
 
 def test_poisson_curve_multiple_curves():
