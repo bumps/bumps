@@ -557,12 +557,14 @@ class PoissonCurve(Curve):
 
     def nllf(self):
         theory = self.theory()
-        log_theory = theory
         if (theory <= 0).any():
             if ((theory < 0) | ((theory == 0) & (self.y > 0))).any():
                 return 1e308
-            log_theory = np.where(theory == 0, 1, theory)
-        return -np.sum(self.y * log(log_theory) - theory) + self._logfactysum
+            # support y log(theory) = 0 when y = theory = 0
+            log_theory = log(np.where(theory == 0, 1.0, theory))
+        else:
+            log_theory = log(theory)
+        return -np.sum(self.y * log_theory - theory) + self._logfactysum
 
     def simulate_data(self, noise=None):
         theory = self.theory()
