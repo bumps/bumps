@@ -471,6 +471,11 @@ class BFGSFit(FitBase):
     """
     BFGS quasi-newton optimizer.
 
+    Parameters with finite fit ranges are optimized at the scale of their
+    initial values, capped by the range widths. Results, monitor points and
+    curvature are in the original units. Zero initial values use the widths.
+    Unbounded parameters keep their existing unit scale.
+
     BFGS estimates Hessian and its Cholesky decomposition, but initial
     tests give uncertainties quite different from the directly computed
     Jacobian in Levenburg-Marquardt or the Hessian estimated at the
@@ -492,13 +497,31 @@ class BFGSFit(FitBase):
         options = _fill_defaults(options, self.settings)
         from .quasinewton import quasinewton
 
+        # Optimize at the scale of the initial values and finite fit ranges.
+        # Avoid a large range making finite differences coarser than necessary.
+        # Scaling the coordinates also keeps the BFGS Hessian update
+        # well-conditioned for mixed units.
+        # Unbounded parameters retain their original coordinates.
+        lower, upper = self.problem.bounds()
+        with np.errstate(over="ignore"):
+            width = upper - lower
+        scale = np.ones_like(width)
+        bounded = np.isfinite(width) & (width > 0)
+        initial = self.problem.getp()
+        typical = np.where(initial != 0, np.minimum(np.abs(initial), width), width)
+        scale[bounded] = typical[bounded]
+
+        def objective(x):
+            return self.problem.nllf(x * scale)
+
         def update(step, x, fx):
-            monitors(step=step, point=x, value=fx, population_points=[x], population_values=[fx])
+            point = x * scale
+            monitors(step=step, point=point, value=fx, population_points=[point], population_values=[fx])
             return not monitors.stopping()
 
         result = quasinewton(
-            fn=self.problem.nllf,
-            x0=self.problem.getp(),
+            fn=objective,
+            x0=initial / scale,
             monitor=update,
             itnlimit=options["steps"],
             gradtol=options["ftol"],
@@ -506,6 +529,10 @@ class BFGSFit(FitBase):
             macheps=1e-8,
             eta=1e-8,
         )
+        result["x"] = result["x"] * scale
+        if result["H"] is not None:
+            result["H"] = result["H"] / scale[:, None] / scale[None, :]
+            result["L"] = result["L"] / scale[:, None]
         self.result = result
         # code = result['status']
         # from .quasinewton import STATUS
@@ -2074,6 +2101,91 @@ def save_fit(
     item_name = state.save_to_history(label=label, keep=True)
     state.shared.active_history = item_name
     state.write_session_file(path)
+
+
+def test_bfgs_parameter_units():
+    """Finite fit ranges give the same statistical fit in different units."""
+    from .curve import Curve
+    from .fitproblem import FitProblem
+
+    x = np.arange(1.0, 7.0)
+    y = np.array([2.1, 4.0, 6.3, 8.03, 9.6, 11.9])
+    dy = np.array([0.05, 0.05, 0.2, 0.05, 0.2, 0.2])
+    design = np.column_stack((np.ones_like(x), x))
+    expected = np.linalg.lstsq(design / dy[:, None], y / dy, rcond=None)[0]
+    expected_cost = 0.5 * np.sum(((design @ expected - y) / dy) ** 2)
+    for b_unit, m_unit in ((1.0, 1.0), (1e-9, 1e-9), (1e9, 1e9), (1e-9, 1e9), (1e9, 1e-9)):
+
+        def line(x, m, b):
+            return m / m_unit * x + b / b_unit
+
+        model = Curve(line, x, y, dy, m=2 * m_unit, b=2 * b_unit)
+        model.m.range(0, 4 * m_unit)
+        model.b.range(-5 * b_unit, 5 * b_unit)
+        problem = FitProblem(model)
+        result = fit(problem, method="newton", steps=100)
+        assert problem.labels() == ["b", "m"]
+        # The optimizer uses forward differences with eta=1e-8. Test the
+        # independently known optimum at that accuracy, not an exact iterate.
+        assert np.allclose(result.x / [b_unit, m_unit], expected, rtol=1e-3, atol=5e-4)
+        assert abs(problem.nllf(result.x) - expected_cost) < 1e-3
+        # A zero initial value has no magnitude to use as a typical scale.
+        # Its finite range supplies the scale instead.
+        model.m.value, model.b.value = 2 * m_unit, 0.0
+        result = fit(problem, method="newton", steps=100)
+        assert abs(problem.nllf(result.x) - expected_cost) < 1e-3
+
+
+def test_bfgs_curvature_units():
+    """Monitor points and curvature retain physical parameter coordinates."""
+    from .curve import Curve
+    from .fitproblem import FitProblem
+
+    x = np.arange(1.0, 7.0)
+    y = np.array([2.1, 4.0, 6.3, 8.03, 9.6, 11.9])
+    dy = np.array([0.05, 0.05, 0.2, 0.05, 0.2, 0.2])
+    design = np.column_stack((np.ones_like(x), x)) / dy[:, None]
+    expected_hessian = design.T @ design
+
+    class RecordingMonitor:
+        def __init__(self):
+            self.points = []
+
+        def __call__(self, **values):
+            self.points.append((values["point"].copy(), values["value"]))
+            assert np.array_equal(values["population_points"][0], values["point"])
+
+        def stopping(self):
+            return False
+
+    reference_hessian, reference_factor = None, None
+    for units in (np.ones(2), np.array([1e-9, 1e9])):
+
+        def line(x, m, b):
+            return m / units[1] * x + b / units[0]
+
+        model = Curve(line, x, y, dy, m=2 * units[1], b=2 * units[0])
+        model.m.range(0, 4 * units[1])
+        model.b.range(-5 * units[0], 5 * units[0])
+        problem = FitProblem(model)
+        recorder = RecordingMonitor()
+        fitter = BFGSFit(problem)
+        fitter.solve(recorder, steps=100)
+        assert recorder.points
+        for point, cost in recorder.points:
+            residuals = (line(x, m=point[1], b=point[0]) - y) / dy
+            assert np.allclose(0.5 * residuals @ residuals, cost, rtol=1e-12, atol=1e-10)
+        hessian = fitter.result["H"] * units[:, None] * units[None, :]
+        factor = fitter.result["L"] * units[:, None]
+        # BFGS supplies approximate curvature. Its estimate must transform
+        # consistently with the units, independently of its approximation error.
+        assert np.allclose(hessian, expected_hessian, rtol=2e-2)
+        assert np.allclose(factor @ factor.T, hessian, rtol=1e-12)
+        if reference_hessian is None:
+            reference_hessian, reference_factor = hessian, factor
+        else:
+            assert np.allclose(hessian, reference_hessian, rtol=1e-7)
+            assert np.allclose(factor, reference_factor, rtol=1e-7)
 
 
 def test_fitters():
