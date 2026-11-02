@@ -146,7 +146,6 @@ async function fetch_and_draw(latest_timestamp?: string) {
     <!-- Rest of the template remains the same -->
     <div v-if="figtype === 'error'" ref="error_div" class="flex-grow-0">
       <div style="color: red; font-size: larger; font-weight: bold">Plotting error:</div>
-      <!-- eslint-disable-next-line vue/no-v-html -->
       <div v-html="error_text"></div>
     </div>
     <div v-else-if="figtype === 'table'" class="flex-grow-0">
