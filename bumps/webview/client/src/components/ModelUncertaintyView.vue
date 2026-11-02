@@ -30,6 +30,8 @@ async function fetch_and_draw(latest_timestamp: string) {
     cache[title] = { timestamp: latest_timestamp, plotdata: plotdata };
   }
   let mpld3_data = plotdata as { width: number; height: number };
+  // panel was switched away while fetching; it redraws when reactivated
+  if (!plot_div.value?.isConnected) return;
   mpld3_data.width = Math.round(plot_div.value?.clientWidth ?? 640) - 16;
   mpld3_data.height = Math.round(plot_div.value?.clientHeight ?? 480) - 16;
   mpld3.draw_figure(plot_div_id.value, mpld3_data, false, true);

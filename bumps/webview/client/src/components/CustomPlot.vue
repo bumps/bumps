@@ -76,6 +76,8 @@ async function fetch_and_draw() {
   } else if (fig_type === "matplotlib") {
     await nextTick();
     let mpld3_data = plotdata as { width: number; height: number };
+    // panel was switched away while fetching; it redraws when reactivated
+    if (!plot_div.value?.isConnected) return;
     mpld3_data.width = Math.round(plot_div.value?.clientWidth ?? 640) - 16;
     mpld3_data.height = Math.round(plot_div.value?.clientHeight ?? 480) - 16;
     mpld3.draw_figure(plot_div_id.value, mpld3_data, false, true);

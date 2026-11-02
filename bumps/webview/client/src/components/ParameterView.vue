@@ -84,10 +84,10 @@ async function setFittable(event: MouseEvent, index: number) {
     <tbody>
       <tr v-for="{ parameter: param, index } in tag_filter?.filtered_parameters" :key="param.id" class="py-1">
         <td>
-          <label class="visually-hidden" for="`param-checkbox-${index}`">Fit?</label>
+          <label class="visually-hidden" :for="`param-checkbox-${index}`">Fit?</label>
           <input
             v-if="param.fittable"
-            id="`param-checkbox-${index}`"
+            :id="`param-checkbox-${index}`"
             class="form-check-input"
             type="checkbox"
             :checked="!param.fixed"

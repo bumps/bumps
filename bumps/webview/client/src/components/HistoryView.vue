@@ -207,6 +207,7 @@ async function set_autosave_history_length(value_str: string) {
             <td class="text-center">
               <input
                 :id="`keep-${label}`"
+                :aria-label="`Keep ${label}`"
                 class="form-check-input"
                 type="checkbox"
                 :checked="keep"
