@@ -1,21 +1,10 @@
-import url from "url";
 import pluginVue from "eslint-plugin-vue";
-import { FlatCompat } from "@eslint/eslintrc";
-import js from "@eslint/js";
+import pluginVueA11y from "eslint-plugin-vuejs-accessibility";
 import { defineConfigWithVueTs, vueTsConfigs } from "@vue/eslint-config-typescript";
-
-const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-  recommendedConfig: js.configs.recommended,
-  resolvePluginsRelativeTo: __dirname,
-  // allConfig: js.configs.all,
-});
 
 export default defineConfigWithVueTs(
   /** Extend recommended configs */
-  ...compat.extends("plugin:vuejs-accessibility/recommended"),
+  ...pluginVueA11y.configs["flat/recommended"],
   ...pluginVue.configs["flat/recommended"],
   vueTsConfigs.recommended,
   /** Configuration */

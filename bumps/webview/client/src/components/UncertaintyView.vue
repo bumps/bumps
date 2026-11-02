@@ -9,7 +9,7 @@ import { configWithSVGDownloadButton } from "../plotly_extras";
 import { setupDrawLoop } from "../setupDrawLoop";
 
 // server sends annotations with name field
-type CustomAnnotations = Plotly.Annotations & { name: string };
+type CustomAnnotations = Plotly.Annotation & { name: string };
 
 Plotly.register([Bar]);
 

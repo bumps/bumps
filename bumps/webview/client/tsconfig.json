@@ -5,7 +5,6 @@
   "compilerOptions": {
     "noErrorTruncation": true,
     "composite": true,
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },
@@ -13,7 +12,6 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "moduleResolution": "Bundler",
-    "target": "ES6",
     "types": ["node"],
     "typeRoots": ["node_modules/@types", "src/types"]
     // "allowJs": true
