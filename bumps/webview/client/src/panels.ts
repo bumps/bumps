@@ -3,7 +3,7 @@ import ConvergenceView from "./components/ConvergenceView.vue";
 import CorrelationView from "./components/CorrelationViewPlotly.vue";
 import CustomPlot from "./components/CustomPlot.vue";
 import CustomUncertaintyPlot from "./components/CustomUncertaintyPlot.vue";
-import DataView from "./components/DataView.vue";
+import DataPanel from "./components/DataView.vue";
 import HistoryView from "./components/HistoryView.vue";
 import LogView from "./components/LogView.vue";
 import ModelInspect from "./components/ModelInspect.vue";
@@ -19,7 +19,7 @@ export const show_custom_plots = () => shared_state.custom_plots_available?.para
 export const show_custom_uncertainty_plots = () => shared_state.custom_plots_available?.uncertainty_based ?? false;
 
 export const panels: Panel[] = [
-  { title: "Data", component: DataView },
+  { title: "Data", component: DataPanel },
   { title: "Summary", component: SummaryView },
   { title: "Log", component: LogView },
   { title: "History", component: HistoryView },

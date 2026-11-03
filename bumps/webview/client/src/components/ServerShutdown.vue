@@ -41,14 +41,8 @@ function cancelClose() {
 </script>
 
 <template>
-  <dialog ref="dialog">
-    <div
-      id="serverShutdownModal"
-      class="modal"
-      tabindex="-1"
-      aria-labelledby="serverShutdownLabel"
-      :aria-hidden="!disconnected"
-    >
+  <dialog aria-labelledby="serverShutdownLabel" ref="dialog">
+    <div id="serverShutdownModal" class="modal" tabindex="-1" :aria-hidden="!disconnected">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
@@ -60,7 +54,7 @@ function cancelClose() {
               <div
                 class="progress-bar"
                 role="progressbar"
-                :style="{ width: (100 * timeRemaining) / CLOSE_DELAY + '%' }"
+                :style="{ width: `${(100 * timeRemaining) / CLOSE_DELAY}%` }"
                 aria-valuemin="0"
                 :aria-valuenow="timeRemaining"
                 :aria-valuemax="CLOSE_DELAY"

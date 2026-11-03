@@ -14,7 +14,7 @@ type CustomAnnotations = Plotly.Annotation & { name: string };
 Plotly.register([Bar]);
 
 const title = "Uncertainty";
-const plot_div = ref<HTMLDivElement>();
+const _plot_div = ref<HTMLDivElement>();
 const plot_div_id = ref(`div-${uuidv4()}`);
 const props = defineProps<{
   socket: AsyncSocket;
@@ -38,7 +38,7 @@ async function fetch_and_draw(latest_timestamp: string): Promise<void> {
 
     const payload = (await props.socket.asyncEmit(
       "get_uncertainty_plot",
-      latest_timestamp,
+      latest_timestamp
     )) as Plotly.PlotlyDataLayoutConfig;
     plotdata = { ...payload };
     cache[title] = { timestamp: latest_timestamp, plotdata };
@@ -84,7 +84,7 @@ function apply_label_visibility(layout: Plotly.Layout, visible: boolean) {
           class="form-check-input"
           type="checkbox"
           @change="on_change_show_labels"
-        />
+        >
         <label class="form-check-label" for="show_labels">Show labels</label>
       </div>
     </div>

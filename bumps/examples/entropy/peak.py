@@ -13,8 +13,9 @@
 # The parameter N is the number of data points to use within the range.
 #
 
+from numpy import exp, inf, pi, sqrt
+
 from bumps.names import *
-from numpy import exp, sqrt, pi, inf
 
 
 # Define the peak shape as a gaussian plus background

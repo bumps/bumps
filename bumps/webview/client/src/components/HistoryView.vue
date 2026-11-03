@@ -83,7 +83,7 @@ async function toggle_autosave_history() {
 
 async function set_autosave_history_length(value_str: string) {
   const new_value = parseInt(value_str, 10);
-  if (!isNaN(new_value) && new_value > 0) {
+  if (!Number.isNaN(new_value) && new_value > 0) {
     await props.socket.asyncEmit("set_shared_setting", "autosave_history_length", new_value);
   }
 }
@@ -99,7 +99,7 @@ async function set_autosave_history_length(value_str: string) {
           type="checkbox"
           :checked="shared_state.autosave_history"
           @click="toggle_autosave_history"
-        />
+        >
         <label class="form-check-label" for="auto_save" title="Append problem state to history on load and at fit end"
           >Auto append</label
         >
@@ -113,7 +113,7 @@ async function set_autosave_history_length(value_str: string) {
           min="1"
           step="1"
           @change="set_autosave_history_length(($event.target as HTMLInputElement).value)"
-        />
+        >
         <label class="col-form-label" for="auto_save_length">history length</label>
       </div>
     </div>
@@ -139,7 +139,7 @@ async function set_autosave_history_length(value_str: string) {
               <small>{{ current_chisq_str }}</small>
             </td>
             <td class="text-nowrap text-end">
-              <button class="btn btn-primary btn-sm mx-1 text-nowrap" @click="manual_save">Save</button>
+              <button type="button" class="btn btn-primary btn-sm mx-1 text-nowrap" @click="manual_save">Save</button>
             </td>
             <td class="text-start">
               <span v-show="shared_state.convergence_available" class="badge bg-success" title="has convergence"
@@ -155,15 +155,7 @@ async function set_autosave_history_length(value_str: string) {
             <td></td>
           </tr>
           <tr
-            v-for="{
-              name,
-              timestamp,
-              label,
-              chisq_str,
-              keep,
-              has_convergence: has_convergence,
-              has_uncertainty,
-            } of history"
+            v-for="{ name, label, chisq_str, keep, has_convergence, has_uncertainty } of history"
             :key="name"
             class="py-1 align-middle"
           >
@@ -176,10 +168,13 @@ async function set_autosave_history_length(value_str: string) {
               ></button>
             </td>
             <td class="px-2">
+              <!-- biome-ignore lint/a11y/useSemanticElements: contenteditable keeps the label's inline look; an <input> would restyle it -->
               <div
-                contenteditable="true"
+                role="textbox"
+                tabindex="0"
+                aria-label="History label"
+                contenteditable="plaintext-only"
                 spellcheck="false"
-                plaintext-only
                 @blur="update_label(name, ($event.target as HTMLTextAreaElement).innerText)"
               >
                 {{ label }}
@@ -191,12 +186,17 @@ async function set_autosave_history_length(value_str: string) {
             </td>
             <td class="text-nowrap text-end">
               <div
-                v-if="shared_state.active_history == name"
+                v-if="shared_state.active_history === name"
                 class="btn btn-outline-success btn-sm mx-1 text-nowrap disabled"
               >
                 Loaded
               </div>
-              <button v-else class="btn btn-secondary btn-sm mx-1 text-nowrap" @click="reload_history(name)">
+              <button
+                type="button"
+                v-else
+                class="btn btn-secondary btn-sm mx-1 text-nowrap"
+                @click="reload_history(name)"
+              >
                 Load
               </button>
             </td>
@@ -212,7 +212,7 @@ async function set_autosave_history_length(value_str: string) {
                 type="checkbox"
                 :checked="keep"
                 @click="toggle_keep(name, keep)"
-              />
+              >
             </td>
           </tr>
         </tbody>

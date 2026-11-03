@@ -45,7 +45,7 @@ async function fetch_and_draw() {
 }
 
 async function editItem(event: FocusEvent, item_name: "min" | "max" | "value", index: number) {
-  const new_value = (event.target as HTMLElement).innerText;
+  const new_value = (event.target as HTMLElement).textContent;
   if (validate_numeric(new_value)) {
     props.socket.asyncEmit("set_parameter", parameters_local.value[index]?.id, item_name, new_value);
   }
@@ -92,7 +92,7 @@ async function setFittable(event: MouseEvent, index: number) {
             type="checkbox"
             :checked="!param.fixed"
             @click.prevent="setFittable($event, index)"
-          />
+          >
         </td>
         <td>
           {{ param.name }}

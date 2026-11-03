@@ -119,8 +119,9 @@ async function setOutputFile(enable_autosave = true, immediate_save = false) {
           type="checkbox"
           role="switch"
           :checked="shared_state.autosave_session"
+          :aria-checked="shared_state.autosave_session"
           @change="toggle_autosave"
-        />
+        >
       </div>
     </li>
     <li>
@@ -138,15 +139,16 @@ async function setOutputFile(enable_autosave = true, immediate_save = false) {
             class="form-control form-control"
             :value="shared_state.autosave_session_interval"
             @change="set_interval(($event.target as HTMLInputElement).valueAsNumber)"
-          />
+          >
         </div>
       </div>
     </li>
     <li>
-      <hr class="dropdown-divider" />
+      <hr class="dropdown-divider">
     </li>
     <li>
       <button
+        type="button"
         class="btn btn-link dropdown-item"
         :class="{ disabled: shared_state.active_fit?.fitter_id }"
         @click="
@@ -159,6 +161,7 @@ async function setOutputFile(enable_autosave = true, immediate_save = false) {
     </li>
     <li>
       <button
+        type="button"
         class="btn btn-link dropdown-item"
         @click="
           saveSession();
@@ -170,6 +173,7 @@ async function setOutputFile(enable_autosave = true, immediate_save = false) {
     </li>
     <li>
       <button
+        type="button"
         class="btn btn-link dropdown-item"
         @click="
           setOutputFile(false, true);

@@ -10,12 +10,12 @@ export function setupDrawLoop(topic: string, socket: AsyncSocket, draw: DrawFunc
   const draw_requested = ref(false);
   const latest_value = ref<unknown>();
 
-  const topic_callback = function (value: unknown) {
+  const topic_callback = (value: unknown) => {
     latest_value.value = value;
     draw_requested.value = true;
   };
 
-  const draw_if_needed = async function () {
+  const draw_if_needed = async () => {
     if (!mounted.value) {
       return;
     }

@@ -86,13 +86,7 @@ function changeModel() {
   <div class="container d-flex flex-column flex-grow-1">
     <div class="form-check">
       <label class="form-check-label pe-2" for="multiple">Show multiple</label>
-      <input
-        id="multiple"
-        v-model="show_multiple"
-        class="form-check-input"
-        type="checkbox"
-        @change="toggle_multiple()"
-      />
+      <input id="multiple" v-model="show_multiple" class="form-check-input" type="checkbox" @change="toggle_multiple()">
     </div>
     <label for="model-select">Models:</label>
     <select v-if="show_multiple" id="multi-model-select" v-model="current_models" multiple @change="changeModel()">

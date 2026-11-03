@@ -1,6 +1,6 @@
 <!-- Button to toggle theme -->
 <template>
-  <button :aria-label="`Switch to ${nextTheme} theme`" class="theme-toggle" @click="toggleTheme">
+  <button type="button" :aria-label="`Switch to ${nextTheme} theme`" class="theme-toggle" @click="toggleTheme">
     <span v-if="currentTheme === 'light'">🌞</span>
     <span v-else>🌜</span>
   </button>

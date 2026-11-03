@@ -22,11 +22,13 @@
 # the values from bumps against known good values.
 
 import sys
-import numpy as np
 from math import log
+
+import numpy as np
 from scipy.stats import distributions, multivariate_normal
+
+from bumps.dream.entropy import Box, Joint, MultivariateT
 from bumps.names import *
-from bumps.dream.entropy import Box, MultivariateT, Joint
 
 # Create the distribution using the name and parameters from the command line.
 # Provide some handy help if the no distribution is given.
@@ -137,7 +139,7 @@ problem = FitProblem(M)
 # Before fitting, print the expected entropy from the fit.
 
 entropy = D.entropy()
-print("*** Expected entropy: %.4f bits %.4f nats" % (entropy / log(2), entropy))
+print(f"*** Expected entropy: {entropy / log(2):.4f} bits {entropy:.4f} nats")
 
 # To exercise the entropy calculator, try fitting some non-normal
 # distributions:
