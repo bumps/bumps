@@ -10,9 +10,10 @@
 # | Instructor: Cliburn Chan cliburn.chan@duke..edu
 # | Instructor: Janice McCarthy janice.mccarthy@duke.edu
 
-from bumps.names import *
 import numpy as np
 from scipy.integrate import odeint
+
+from bumps.names import *
 
 # Define the ODE
 

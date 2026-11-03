@@ -5,7 +5,7 @@ import type { AsyncSocket } from "../asyncSocket.ts";
 
 const props = defineProps<{ socket: AsyncSocket }>();
 
-const loading_dialog = ref<HTMLDivElement>();
+const _loading_dialog = ref<HTMLDivElement>();
 // const connected = ref(false);
 const status_string = ref<string>();
 const percent = ref<number>();
@@ -24,14 +24,8 @@ console.log("Connected handler registered.");
 </script>
 
 <template>
-  <dialog ref="loading_dialog" :open="connecting">
-    <div
-      id="serverStartupModal"
-      class="modal show"
-      tabindex="-1"
-      aria-labelledby="serverStartupLabel"
-      :aria-hidden="!connecting"
-    >
+  <dialog aria-labelledby="serverStartupLabel" ref="loading_dialog" :open="connecting">
+    <div id="serverStartupModal" class="modal show" tabindex="-1" :aria-hidden="!connecting">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
@@ -42,7 +36,7 @@ console.log("Connected handler registered.");
               <div
                 class="progress-bar"
                 role="progressbar"
-                :style="{ width: percent + '%' }"
+                :style="{ width: `${percent}%` }"
                 :aria-valuenow="percent"
                 aria-valuemin="0"
                 aria-valuemax="100"

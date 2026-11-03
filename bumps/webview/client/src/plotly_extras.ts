@@ -4,7 +4,7 @@ export const SVGDownloadButton = {
   name: "Download as SVG",
   title: "Download as SVG",
   icon: Plotly.Icons["camera-retro"],
-  click: function (gd: Plotly.RootOrData) {
+  click: (gd: Plotly.RootOrData) => {
     Plotly.downloadImage(gd, {
       format: "svg",
       width: null,
@@ -18,7 +18,7 @@ export const PNGDownloadButton = {
   name: "Download plot as PNG",
   title: "Download plot as PNG",
   icon: Plotly.Icons.camera, // default icon for PNG download
-  click: function (gd: Plotly.RootOrData) {
+  click: (gd: Plotly.RootOrData) => {
     Plotly.downloadImage(gd, {
       format: "png",
       width: null,

@@ -92,7 +92,7 @@ defineExpose({
     <summary>Tags</summary>
     <div class="form-check">
       <label class="form-check-label ps-1">
-        <input v-model="show_tags" type="checkbox" class="form-check-input" />
+        <input v-model="show_tags" type="checkbox" class="form-check-input">
         Display tags
       </label>
     </div>
@@ -101,6 +101,7 @@ defineExpose({
       <div class="col-1 text-end">Include</div>
       <div class="col">
         <button
+          type="button"
           v-for="(tag_color, tag) in tag_colors"
           :id="`include-tag-${tag}`"
           :key="`include-tag-${tag}`"
@@ -120,6 +121,7 @@ defineExpose({
       <div class="col-1 text-end">Exclude</div>
       <div class="col">
         <button
+          type="button"
           v-for="(tag_color, tag) in tag_colors"
           :key="`exclude-tag-${tag}`"
           class="badge rounded-pill me-1"

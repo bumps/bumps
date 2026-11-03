@@ -10,7 +10,6 @@ import { cache } from "../plot_cache";
 import { configWithSVGDownloadButton } from "../plotly_extras";
 import { setupDrawLoop } from "../setupDrawLoop";
 
-const hidden_download = ref<HTMLAnchorElement>();
 const export_data = ref<string | null>(null);
 
 type PlotInfo = { title: string; change_with: string; model_index: number };
@@ -46,13 +45,14 @@ const { draw_requested, drawing_busy } = setupDrawLoop(
   "updated_uncertainty",
   props.socket,
   fetch_and_draw,
-  panel_title,
+  panel_title
 );
 
 async function export_clicked() {
   if (export_data.value) {
-    const a = hidden_download.value as HTMLAnchorElement;
-    a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(export_data.value);
+    const a = document.createElement("a");
+    a.download = "exported_uncertainty_data.csv";
+    a.href = `data:text/csv;charset=utf-8,${encodeURIComponent(export_data.value)}`;
     a.click();
   }
 }
@@ -136,11 +136,12 @@ async function fetch_and_draw(latest_timestamp?: string) {
           class="form-control w-auto flex-grow-1"
           type="number"
           @change="draw_requested = true"
-        />
+        >
       </div>
       <div class="col-md-2 d-flex justify-content-end align-items-center">
-        <button v-if="export_data !== null" class="btn btn-primary btn-sm" @click="export_clicked">Export Data</button>
-        <a ref="hidden_download" class="hidden" download="exported_uncertainty_data.csv" type="text/csv">Export Data</a>
+        <button type="button" v-if="export_data !== null" class="btn btn-primary btn-sm" @click="export_clicked">
+          Export Data
+        </button>
       </div>
     </div>
     <!-- Rest of the template remains the same -->
@@ -169,9 +170,6 @@ async function fetch_and_draw(latest_timestamp?: string) {
 
 svg {
   width: 100%;
-}
-.hidden {
-  display: none;
 }
 span.spinner-border {
   width: 3rem;

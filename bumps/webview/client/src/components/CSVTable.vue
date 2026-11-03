@@ -18,7 +18,7 @@ defineProps<{ tableData: TableData }>();
       </thead>
       <tbody>
         <tr v-for="(table_row, table_row_index) in tableData.rows" :key="`row-${table_row_index}`" class="py-1">
-          <td v-for="(table_item, table_item_index) in table_row" :key="`item-${table_item_index}`" scope="col">
+          <td v-for="(table_item, table_item_index) in table_row" :key="`item-${table_item_index}`">
             {{ table_item }}
           </td>
         </tr>

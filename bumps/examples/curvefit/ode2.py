@@ -10,8 +10,9 @@
 #    https://scipy-cookbook.readthedocs.io/items/CoupledSpringMassSystem.html
 #
 
-from bumps.names import *
 from scipy.integrate import odeint
+
+from bumps.names import *
 
 # Use ODEINT to solve the differential equations defined by the vector field
 
