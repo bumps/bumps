@@ -1133,41 +1133,64 @@ class NestedSamplerFit(FitBase):
         def prior_transform(u):
             return [parameter.prior.put01(u[i]) for i, parameter in enumerate(self.parameters)]
 
-        self.nested_sampler = DynamicNestedSampler(log_likelihood, prior_transform, ndim) 
+        self.nested_sampler = DynamicNestedSampler(log_likelihood, prior_transform, ndim)
 
     def solve(self, monitors: MonitorRunner, mapper=None, **options):
         """
         Fit the problem using nested sampling.
         """
         from dynesty.dynamicsampler import stopping_function, weight_function
+
+        niter = 0
         # baseline initial sampling
         for results in self.nested_sampler.sample_initial():
-            pass
+            niter += 1
+            self.update(monitors, niter, results)
 
-        # sample in batches until the stopping criterion is reached 
+        self.results = self.nested_sampler.results
+
+        # sample in batches until the stopping criterion is reached
         while True:
             stop = stopping_function(self.nested_sampler.results)  # evaluate stop
             if not stop:
                 logl_bounds = weight_function(self.nested_sampler.results)  # derive bounds
                 for results in self.nested_sampler.sample_batch(logl_bounds=logl_bounds):
-                    pass
+                    niter += 1
+                    self.update(monitors, niter, results)
                 self.nested_sampler.combine_runs()  # add new samples to previous results
                 self.results = self.nested_sampler.results
-                monitors.update(
-                    step=self.results.niter,
-                    point=self.results.samples[-1],
-                    value=self.results.logl[-1],
-                    )
             else:
                 break
 
         self.results = self.nested_sampler.results
         # get best sampled point; the log-likelihood array is sorted,
         # so the best point is the last point in the array
-        fx = self.results.logl[-1]
+        fx = -self.results.logl[-1]
         x = self.results.samples[-1]
 
         return x, fx
+
+    def update(self, monitors: MonitorRunner, step: int, results):
+        """
+        Send one iteration of the sampler to the monitors.
+        """
+        population_points, population_values = self._live_points()
+        monitors.update(
+            step=step,
+            point=results.vstar,
+            value=-results.loglstar,
+            population_points=population_points,
+            population_values=population_values,
+        )
+
+    def _live_points(self):
+        """
+        Return (points, cost) for the live points of the sampler.
+        """
+        sampler = self.nested_sampler.batch_sampler
+        if sampler is None:
+            sampler = self.nested_sampler.sampler
+        return np.asarray(sampler.live_v), -np.asarray(sampler.live_logl)
 
 
 class Resampler(FitBase):
@@ -2173,6 +2196,11 @@ def test_fitters(subtests):
     fit_error_tol = 1e-3
     expected_value = [1.106e-1, 1.970]
     expected_error = [5.799e-2, 2.055e-2]
+    # Nested sampling returns the best *sampled* point rather than an optimum
+    # so it is a little away from the true minimum; 
+    # Relative to the intercept (0.11 +/- 0.06) that is a few parts in 1000,
+    # so it needs a looser tolerance on the values than the optimizers do.
+    fitter_tols = {"nested_sampling": 1e-2}
 
     store = None
     export = None
@@ -2194,7 +2222,9 @@ def test_fitters(subtests):
                 parallel=parallel,
                 name=fitter_name,
             )
-            assert_allclose(result.x, expected_value, rtol=fit_value_tol)
+            # get tolerance for fitters with exceptions
+            value_tol = fitter_tols.get(fitter_name, fit_value_tol)
+            assert_allclose(result.x, expected_value, rtol=value_tol)
             if fitter_name != "dream":
                 # dream error bars vary too much to test
                 assert_allclose(result.dx, expected_error, rtol=fit_error_tol)
