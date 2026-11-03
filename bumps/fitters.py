@@ -1105,13 +1105,14 @@ class NestedSamplerFit(FitBase):
     """
     name = "Nested Sampling"
     id = "ns"
-    settings = [
-            # TODO: https://github.com/bumps/bumps/issues/480
-            ]
+    settings = [("nlive", 500),
+                ("dlogz", 0.01),
+                ("pfrac", 0.0),
+                ("maxiter", 20000),
+                ("bound", "multi"),
+                ("sample", "auto")]
 
-    def __init__(self, problem):
-        from dynesty import DynamicNestedSampler
-        
+    def __init__(self, problem):    
         self.problem = problem
         self.problem.model_reset()
 
@@ -1121,36 +1122,52 @@ class NestedSamplerFit(FitBase):
         self._best_value = np.inf
 
         self.parameters = self.problem.parameters
-        ndim = len(self.parameters)
        
-        def log_likelihood(x):
-            """
-            Calculate the log-likelihood of the model.
-            """            
-            # Note: this is only using nllf from experiment;
-            # parameter_nllf is handled implicitly by prior_transform
-            # and constraints_nllf is added to the final best value at the end 
-            self.problem.setp(x)
-            return -self.problem.model_nllf()
+        self.nested_sampler = None
 
-        def prior_transform(u):
-            """Transform the parameter space to the unit hypercube."""
-            return [parameter.prior.put01(u[i]) for i, parameter in enumerate(self.parameters)]
+    def log_likelihood(self, x):
+        """
+        Calculate the log-likelihood of the model.
+        """
+        # Note: this is only using nllf from experiment;
+        # parameter_nllf is handled implicitly by prior_transform
+        # and constraints_nllf is added to the final best value at the end
+        self.problem.setp(x)
+        return -self.problem.model_nllf()
 
-        self.nested_sampler = DynamicNestedSampler(log_likelihood, prior_transform, ndim)
+    def prior_transform(self, u):
+        """Transform the parameter space to the unit hypercube."""
+        return [parameter.prior.put01(u[i]) for i, parameter in enumerate(self.parameters)]
 
     def solve(self, monitors: MonitorRunner, mapper=None, **options):
         """
         Fit the problem using nested sampling.
         """
+        from dynesty import DynamicNestedSampler
         from dynesty.dynamicsampler import stopping_function, weight_function
+
+        options = _fill_defaults(options, self.settings)
+        maxiter = options["maxiter"]
+        # arguments for stopping criteria 
+        stop_args = {"pfrac": options["pfrac"], "evid_thresh": options["dlogz"]}
+
+        # nlive is only needed by the constructor
+        ndim = len(self.parameters)
+        self.nested_sampler = DynamicNestedSampler(
+            self.log_likelihood,
+            self.prior_transform,
+            ndim,
+            nlive=options["nlive"],
+            bound=options["bound"],
+            sample=options["sample"],
+        )
 
         niter = 0
         aborted = monitors.stopping()
 
         # baseline initial sampling
         if not aborted:
-            for _ in self.nested_sampler.sample_initial():
+            for _ in self.nested_sampler.sample_initial(dlogz=options["dlogz"], maxiter=maxiter):
                 niter += 1
                 self.update(monitors, niter)
                 if monitors.stopping():
@@ -1158,32 +1175,31 @@ class NestedSamplerFit(FitBase):
                     break
 
         if niter == 0:
-            # restore starting point as we have no data 
+            # restore starting point as we have no data
             x = self.problem.getp()
             return x, self.problem.nllf(x)
 
         self.results = self.nested_sampler.results
 
         # sample in batches until the stopping criterion is reached
-        while not aborted:
-            stop = stopping_function(self.nested_sampler.results)  # evaluate stop
-            if not stop:
-                logl_bounds = weight_function(self.nested_sampler.results)  # derive bounds
-                for _ in self.nested_sampler.sample_batch(logl_bounds=logl_bounds):
-                    niter += 1
-                    self.update(monitors, niter)
-                    # Check for user abort or fit timeout. The partial batch is
-                    # discarded (it is not combined into the saved run) since its
-                    # weights are only correct once the batch is complete.
-                    if monitors.stopping():
-                        aborted = True
-                        break
-                if aborted:
-                    break
-                self.nested_sampler.combine_runs()  # add new samples to previous results
-                self.results = self.nested_sampler.results
-            else:
+        # maxiter is per call, so we need to remove iters as we run
+        while not aborted and niter < maxiter:
+            if stopping_function(self.nested_sampler.results, args=stop_args):  # evaluate stop
                 break
+            logl_bounds = weight_function(self.nested_sampler.results)  # derive bounds
+            for _ in self.nested_sampler.sample_batch(logl_bounds=logl_bounds, maxiter=maxiter - niter):
+                niter += 1
+                self.update(monitors, niter)
+                # Check for user abort or fit timeout. The partial batch is
+                # discarded (it is not combined into the saved run) since its
+                # weights are only correct once the batch is complete.
+                if monitors.stopping():
+                    aborted = True
+                    break
+            if aborted:
+                break
+            self.nested_sampler.combine_runs()  # add new samples to previous results
+            self.results = self.nested_sampler.results
 
         # Note: on abort self.results holds the samples from the initial run plus
         # any completed batches, so it is not updated from the sampler here.
@@ -1252,6 +1268,20 @@ class NestedSamplerFit(FitBase):
         if sampler is None:
             sampler = self.nested_sampler.sampler
         return np.asarray(sampler.live_v), -np.asarray(sampler.live_logl)
+
+    @classmethod
+    def max_steps(
+        cls, problem: Optional["bumps.fitproblem.FitProblem"] = None, options: Optional[Dict[str, Any]] = None
+    ) -> int:
+        """
+        Return the maximum number of steps the fitter will take based on
+        the given options.
+        """
+        options = _fill_defaults(options, cls.settings)
+        # maxiter only bounds the sampling iterations. Once it is reached the
+        # sampler wraps up by yielding the remaining nlive live points one at a
+        # time, followed by a final iteration
+        return options["maxiter"] + options["nlive"] + 1
 
 
 class Resampler(FitBase):
