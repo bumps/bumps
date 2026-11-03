@@ -1139,9 +1139,29 @@ class NestedSamplerFit(FitBase):
         """
         Fit the problem using nested sampling.
         """
-        self.nested_sampler.run_nested()
-        self.results = self.nested_sampler.results
+        from dynesty.dynamicsampler import stopping_function, weight_function
+        # baseline initial sampling
+        for results in self.nested_sampler.sample_initial():
+            pass
 
+        # sample in batches until the stopping criterion is reached 
+        while True:
+            stop = stopping_function(self.nested_sampler.results)  # evaluate stop
+            if not stop:
+                logl_bounds = weight_function(self.nested_sampler.results)  # derive bounds
+                for results in self.nested_sampler.sample_batch(logl_bounds=logl_bounds):
+                    pass
+                self.nested_sampler.combine_runs()  # add new samples to previous results
+                self.results = self.nested_sampler.results
+                monitors.update(
+                    step=self.results.niter,
+                    point=self.results.samples[-1],
+                    value=self.results.logl[-1],
+                    )
+            else:
+                break
+
+        self.results = self.nested_sampler.results
         # get best sampled point; the log-likelihood array is sorted,
         # so the best point is the last point in the array
         fx = self.results.logl[-1]
@@ -2127,12 +2147,13 @@ def save_fit(
     state.write_session_file(path)
 
 
-def test_fitters():
+def test_fitters(subtests):
     """
     Run the fit tests to make sure they work.
     """
     from .curve import Curve
     from .fitproblem import FitProblem
+    from numpy.testing import assert_allclose
 
     x = [1, 2, 3, 4, 5, 6]
     y = [2.1, 4.0, 6.3, 8.03, 9.6, 11.9]
@@ -2162,18 +2183,18 @@ def test_fitters():
     # export = "/tmp/testexport"
     # verbose = True
     # parallel = 0 # Parallel fit
-    for fitter_name in FIT_ACTIVE_IDS:
-        # print(f"Running {fitter_name}")
-        result = fit(
-            problem,
-            method=fitter_name,
-            verbose=verbose,
-            store=store,
-            export=export,
-            parallel=parallel,
-            name=fitter_name,
-        )
-        assert np.allclose(result.x, expected_value, rtol=fit_value_tol)
-        if fitter_name != "dream":
-            # dream error bars vary too much to test
-            assert np.allclose(result.dx, expected_error, rtol=fit_error_tol)
+    for i, fitter_name in enumerate(FIT_ACTIVE_IDS):
+        with subtests.test(msg=fitter_name, i=i):
+            result = fit(
+                problem,
+                method=fitter_name,
+                verbose=verbose,
+                store=store,
+                export=export,
+                parallel=parallel,
+                name=fitter_name,
+            )
+            assert_allclose(result.x, expected_value, rtol=fit_value_tol)
+            if fitter_name != "dream":
+                # dream error bars vary too much to test
+                assert_allclose(result.dx, expected_error, rtol=fit_error_tol)
