@@ -159,7 +159,6 @@ FIT_FIELDS = dict(
     nlive=("Live points", parse_int),
     dlogz=("Evidence tolerance", float),
     pfrac=("Posterior/evidence weight", float),
-    maxiter=("Max iterations", parse_int),
     bound=("Bounding method", ChoiceList("none", "single", "multi", "balls", "cubes")),
     sample=("Sampling method", ChoiceList("auto", "unif", "rwalk", "slice", "rslice")),
 )

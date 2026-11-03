@@ -397,7 +397,6 @@ Setting(
     evidence. A pfrac of 1 allocates all samples to resolving the posterior, and a
     pfrac of 0 allocates them all to narrowing the evidence to within dlogz.""",
 )
-Setting("maxiter", "Max iterations", int, "Maximum number of sampler iterations.")
 Setting("bound", "Bounding method", list("none single multi balls cubes".split()),
         "How likelihood contours of live points should be bounded.\n"
         "  none: sample from the entire unit hypercube.\n"

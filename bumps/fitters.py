@@ -1105,10 +1105,10 @@ class NestedSamplerFit(FitBase):
     """
     name = "Nested Sampling"
     id = "ns"
-    settings = [("nlive", 500),
+    settings = [("steps", 20000),
+                ("nlive", 500),
                 ("dlogz", 0.01),
                 ("pfrac", 0.0),
-                ("maxiter", 20000),
                 ("bound", "multi"),
                 ("sample", "auto")]
 
@@ -1147,7 +1147,7 @@ class NestedSamplerFit(FitBase):
         from dynesty.dynamicsampler import stopping_function, weight_function
 
         options = _fill_defaults(options, self.settings)
-        maxiter = options["maxiter"]
+        steps = options["steps"]
         # arguments for stopping criteria 
         stop_args = {"pfrac": options["pfrac"], "evid_thresh": options["dlogz"]}
 
@@ -1167,7 +1167,7 @@ class NestedSamplerFit(FitBase):
 
         # baseline initial sampling
         if not aborted:
-            for _ in self.nested_sampler.sample_initial(dlogz=options["dlogz"], maxiter=maxiter):
+            for _ in self.nested_sampler.sample_initial(dlogz=options["dlogz"], maxiter=steps):
                 niter += 1
                 self.update(monitors, niter)
                 if monitors.stopping():
@@ -1183,11 +1183,11 @@ class NestedSamplerFit(FitBase):
 
         # sample in batches until the stopping criterion is reached
         # maxiter is per call, so we need to remove iters as we run
-        while not aborted and niter < maxiter:
+        while not aborted and niter < steps:
             if stopping_function(self.nested_sampler.results, args=stop_args):  # evaluate stop
                 break
             logl_bounds = weight_function(self.nested_sampler.results)  # derive bounds
-            for _ in self.nested_sampler.sample_batch(logl_bounds=logl_bounds, maxiter=maxiter - niter):
+            for _ in self.nested_sampler.sample_batch(logl_bounds=logl_bounds, maxiter=steps - niter):
                 niter += 1
                 self.update(monitors, niter)
                 # Check for user abort or fit timeout. The partial batch is
@@ -1278,10 +1278,10 @@ class NestedSamplerFit(FitBase):
         the given options.
         """
         options = _fill_defaults(options, cls.settings)
-        # maxiter only bounds the sampling iterations. Once it is reached the
+        # steps only bounds the sampling iterations. Once it is reached the
         # sampler wraps up by yielding the remaining nlive live points one at a
         # time, followed by a final iteration
-        return options["maxiter"] + options["nlive"] + 1
+        return options["steps"] + options["nlive"] + 1
 
 
 class Resampler(FitBase):
