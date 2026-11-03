@@ -78,6 +78,7 @@ __all__ = ["MCMCDraw", "Draw", "dream_load", "h5load", "h5dump"]
 import os.path
 import re
 import gzip
+import json
 from typing import List, Dict, TextIO, Tuple, Union, Optional, Callable
 from pathlib import Path
 import warnings
@@ -302,6 +303,7 @@ def h5load(group: "Group"):
 
 
 def save_state(state: "MCMCDraw", filename: str):
+    """Export chains with the best point in the header, leaving samples unchanged."""
     # import sys; trace = sys.stdout
     # trace = open(filename+"-trace.mc", "wt")
     # trace.write("starting trace\n")
@@ -341,7 +343,9 @@ def save_state(state: "MCMCDraw", filename: str):
     # Write point info
     # trace.write("writing point\n")
     fid = CREATE(filename + "-point" + EXT, "wb")
-    fid.write(f"# logp point (Nthin x Npop x Nvar = [{Nthin},{Npop},{Nvar}])\n".encode())
+    best_x, best_logp = state.best()
+    best = json.dumps({"point": best_x.tolist(), "logp": float(best_logp)})
+    fid.write(f"# logp point (Nthin x Npop x Nvar = [{Nthin},{Npop},{Nvar}]) best: {best}\n".encode())
     savetxt(fid, point)
     fid.close()
 
@@ -435,6 +439,9 @@ def load_state(filename: str, skip=0, report=0, derived_vars=0):
     from other columns in that point. The newer set_derived_vars interface generates
     the derived variables on demand rather than storing them in the state object and
     so it will be zero always.
+
+    The best point is restored from the point-file header when present.
+    For older exports it is estimated from the retained samples.
     """
 
     # Trim extension from filename
@@ -449,6 +456,8 @@ def load_state(filename: str, skip=0, report=0, derived_vars=0):
         line = fid.readline()
         point_dims = line[line.find("[") + 1 : line.find("]")]
         Nthin, Npop, Nvar = eval(point_dims)
+        _, marker, best_json = line.partition(" best: ")
+        best = json.loads(best_json) if marker else None
         for _ in range(skip * Npop):
             fid.readline()
         point = loadtxt_with_fallback(fid, report=report * Npop)
@@ -499,9 +508,13 @@ def load_state(filename: str, skip=0, report=0, derived_vars=0):
     state._update_CR_weight = stats[:, 1 + num_r :]
     state._outliers = []
 
-    bestidx = np.argmax(point[:, 0])
-    state._best_logp = point[bestidx, 0]
-    state._best_x = point[bestidx, 1 : Nvar + 1 - derived_vars]
+    if best is not None:
+        state._best_logp = best["logp"]
+        state._best_x = asarray(best["point"])[: Nvar - derived_vars]
+    else:
+        bestidx = np.argmax(point[:, 0])
+        state._best_logp = point[bestidx, 0]
+        state._best_x = point[bestidx, 1 : Nvar + 1 - derived_vars]
     state._best_gen = 0
 
     # Clean up _thin dimensions.
@@ -1888,6 +1901,43 @@ def test():
     # assert norm(sample[:, 2, :] - xin[thinning-1::thinning, 2, :]) == 0
     # assert norm(logp[:, 1] - pin[thinning-1::thinning, 2]) == 0
     # assert norm(logp[:, 2] - pin[thinning-1::thinning, 2]) == 0
+
+
+def test_export_best(tmp_path):
+    # The best point has fallen out of the circular history. It must survive
+    # export without replacing a posterior sample or the current population.
+    from copy import deepcopy
+
+    state = MCMCDraw(Ngen=6, Nthin=3, Nupdate=3, Nvar=2, Npop=3, Ncr=2, thinning=2)
+    for generation in range(12):
+        if generation % 4 == 0:
+            state._update(CR_weight=np.array([0.25, 0.75]))
+        x = np.arange(6.0).reshape(3, 2) + generation
+        state._generation(new_draws=3, x=x, logp=-np.sum(x**2, axis=1), accept=np.ones(3, dtype=bool))
+    assert state.best()[1] > state.chains()[2].max()
+    before = deepcopy(state)
+    filename = str(tmp_path / "fit")
+    save_state(state, filename)
+
+    for name, value in before.__dict__.items():
+        np.testing.assert_equal(state.__dict__[name], value)
+    for skip in (0, 1):
+        loaded = load_state(filename, skip=skip)
+        np.testing.assert_equal(loaded.best(), before.best())
+        np.testing.assert_equal(loaded.chains()[1], before.chains()[1][skip:])
+        np.testing.assert_equal(loaded.chains()[2], before.chains()[2][skip:])
+        np.testing.assert_equal(loaded._last_gen(), (before.chains()[1][-1], before.chains()[2][-1]))
+
+    # Old files have no best-point metadata; retain the sample-based fallback.
+    path = Path(filename + "-point" + EXT)
+    with gzip.open(path, "rt") as stream:
+        header, samples = stream.readline(), stream.read()
+    with gzip.open(path, "wt") as stream:
+        stream.write(header.partition(" best: ")[0] + "\n" + samples)
+    legacy = load_state(filename)
+    points, logp = before.chains()[1:]
+    index = np.unravel_index(np.argmax(logp), logp.shape)
+    np.testing.assert_equal(legacy.best(), (points[index], logp[index]))
 
 
 if __name__ == "__main__":
