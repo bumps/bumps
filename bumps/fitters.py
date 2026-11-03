@@ -1099,6 +1099,56 @@ class DreamFit(FitBase):
         steps = int(np.ceil((steps - 1) / DE_steps)) * DE_steps + 1  # round up to multiple of DE_steps
         return steps
 
+class NestedSamplerFit(FitBase):
+    """
+    A nested sampler fitter.
+    """
+    name = "Nested Sampling"
+    id = "nested_sampling"
+    settings = [
+            # TODO: https://github.com/bumps/bumps/issues/480
+            ]
+
+    def __init__(self, problem):
+        from dynesty import DynamicNestedSampler
+        
+        self.problem = problem
+        self.problem.model_reset()
+
+        self.results = None
+        
+        self.parameters = self.problem.parameters
+        ndim = len(self.parameters)
+       
+        def log_likelihood(x):
+            """
+            Calculate the log-likelihood of the model
+            """            
+            # Note: this is only using nllf from experiment;
+            # parameter_nllf is handled implicitly by prior_transform
+            # and constraints_nllf is ignored.
+            self.problem.setp(x)
+            return -self.problem.model_nllf()
+
+        def prior_transform(u):
+            return [parameter.prior.put01(u[i]) for i, parameter in enumerate(self.parameters)]
+
+        self.nested_sampler = DynamicNestedSampler(log_likelihood, prior_transform, ndim) 
+
+    def solve(self, monitors: MonitorRunner, mapper=None, **options):
+        """
+        Fit the problem using nested sampling.
+        """
+        self.nested_sampler.run_nested()
+        self.results = self.nested_sampler.results
+
+        # get best sampled point; the log-likelihood array is sorted,
+        # so the best point is the last point in the array
+        fx = self.results.logl[-1]
+        x = self.results.samples[-1]
+
+        return x, fx
+
 
 class Resampler(FitBase):
     # TODO: why isn't cli.resynth using this?
@@ -1470,6 +1520,7 @@ register(DreamFit)
 register(BFGSFit)
 register(MPFit)
 register(PTFit, active=False)
+register(NestedSamplerFit)
 # register(PSFit, active=False)
 # register(RLFit, active=False)
 # register(LevenbergMarquardtFit, active=True)
