@@ -2,6 +2,8 @@
 bumps/webview/client/node_modules/
 bumps/webview/client/dist
 
+.vscode/
+
 # virtual environment
 venv/
 env/

@@ -121,7 +121,7 @@ async function onInactive(param: parameter_info) {
         <td>
           <label class="visually-hidden" :for="`parameter${index}`">Value</label>
           <input
-            id="'parameter' + index"
+            :id="`parameter${index}`"
             v-model.number="parameters_local01[index]"
             type="range"
             class="form-range"

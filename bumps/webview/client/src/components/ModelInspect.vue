@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { getDiff } from "json-difference";
+import VueJsonPretty from "vue-json-pretty";
 import type { AsyncSocket } from "../asyncSocket.ts";
 import { setupDrawLoop } from "../setupDrawLoop";
 import "vue-json-pretty/lib/styles.css";
@@ -86,5 +87,5 @@ function resolve_diffpath(obj: Record<number | string, any>, diffpath: string) {
 </script>
 
 <template>
-  <vue-json-pretty :data="modelJson" :deep="1" :show-length="true" />
+  <VueJsonPretty :data="modelJson" :deep="1" :show-length="true" />
 </template>
