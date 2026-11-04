@@ -9,9 +9,7 @@ const props = defineProps<{
   socket: AsyncSocket;
 }>();
 
-defineEmits<{
-  (e: "selected", pathlist: string[], filename: string): void;
-}>();
+defineEmits<(e: "selected", pathlist: string[], filename: string) => void>();
 
 interface FileInfo {
   name: string;
@@ -120,13 +118,13 @@ async function setPath(new_pathlist?: string[]) {
 }
 
 const PREFIXES = ["", "k", "M", "G", "T", "P"];
-const SCALES = PREFIXES.map((_, i) => Math.pow(1024, i));
+const SCALES = PREFIXES.map((_, i) => 1024 ** i);
 const LOG_1024 = Math.log(1024);
 function formatSize(bytes: number) {
   const scale = bytes > 0 ? Math.min(5, Math.floor(Math.log(bytes) / LOG_1024)) : 0;
   const prefix = PREFIXES[scale];
   const reduced = bytes / SCALES[scale]!;
-  const extra_digits = scale == 0 ? 0 : 1;
+  const extra_digits = scale === 0 ? 0 : 1;
   return `${reduced.toFixed(extra_digits)} ${prefix}B`;
 }
 
@@ -160,13 +158,13 @@ function calculateIcon(column: sortOrder) {
   }
 }
 
-const SUFFIX_SEARCH = /^(.*)(\.[^\.]+)$/;
+const SUFFIX_SEARCH = /^(.*)(\.[^.]+)$/;
 function selectNotSuffix(ev: Event) {
   const target = ev.target as HTMLInputElement;
   const value = target.value;
   const matches = value.match(SUFFIX_SEARCH);
   if (matches !== null) {
-    const selection_length = matches[1]!.length;
+    const selection_length = matches[1]?.length;
     target.setSelectionRange(0, selection_length);
   }
 }
@@ -176,7 +174,7 @@ watch(active_search_pattern, async (newval) => {
     active_search_regexp.value = null;
   } else {
     const subexps = newval?.split(",") ?? [];
-    const re = subexps.map((s) => `(${s.trim().replace(/\./g, "\.")})`);
+    const re = subexps.map((s) => `(${s.trim().replace(/\./g, ".")})`);
     active_search_regexp.value = new RegExp(`(${re.join("|")})$`);
   }
   doSorting();
@@ -189,14 +187,8 @@ defineExpose({
 </script>
 
 <template>
-  <dialog ref="dialog">
-    <div
-      id="fileBrowserModal"
-      class="modal show"
-      tabindex="-1"
-      aria-labelledby="fileBrowserLabel"
-      :aria-hidden="!isOpen"
-    >
+  <dialog aria-labelledby="fileBrowserLabel" ref="dialog">
+    <div id="fileBrowserModal" class="modal show" tabindex="-1" :aria-hidden="!isOpen">
       <div class="modal-dialog modal-lg modal-dialog-scrollable show">
         <div class="modal-content">
           <div class="modal-header">
@@ -209,7 +201,9 @@ defineExpose({
                 <ol class="breadcrumb mb-0">
                   <li class="breadcrumb-item fw-bold me-1">Drives:</li>
                   <li v-for="drive in drives" :key="drive" class="breadcrumb-item">
-                    <a href="#" @click.prevent="setPath([drive])">{{ drive }}</a>
+                    <button type="button" class="btn btn-link p-0 align-baseline" @click="setPath([drive])">
+                      {{ drive }}
+                    </button>
                   </li>
                 </ol>
               </nav>
@@ -218,10 +212,18 @@ defineExpose({
               <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
                   <li v-if="canGoUp" class="breadcrumb-item">
-                    <a href="#" title="Go up one level" @click.prevent="goUp">⬆</a>
+                    <button type="button" class="btn btn-link p-0 align-baseline" title="Go up one level" @click="goUp">
+                      ⬆
+                    </button>
                   </li>
                   <li v-for="(pathitem, index) in pathlist" :key="index" class="breadcrumb-item">
-                    <a href="#" @click.prevent="setPath(pathlist.slice(0, index + 1))">{{ pathitem }}</a>
+                    <button
+                      type="button"
+                      class="btn btn-link p-0 align-baseline"
+                      @click="setPath(pathlist.slice(0, index + 1))"
+                    >
+                      {{ pathitem }}
+                    </button>
                   </li>
                 </ol>
               </nav>
@@ -239,7 +241,7 @@ defineExpose({
                     class="form-control"
                     @focus="selectNotSuffix"
                     @keyup.enter="chooseFile"
-                  />
+                  >
                 </div>
               </div>
             </div>
@@ -249,10 +251,19 @@ defineExpose({
               <h5>Subdirectories:</h5>
               <div class="row row-cols-3">
                 <div v-if="canGoUp" class="col overflow-hidden">
-                  <a href="#" title="Parent directory" @click.prevent="goUp">..</a>
+                  <button type="button" class="btn btn-link p-0 align-baseline" title="Parent directory" @click="goUp">
+                    ..
+                  </button>
                 </div>
                 <div v-for="subdir in subdirlist" :key="subdir.name" class="col overflow-hidden">
-                  <a href="#" :title="subdir.name" @click.prevent="subdirClick(subdir.name)">{{ subdir.name }}</a>
+                  <button
+                    type="button"
+                    class="btn btn-link p-0 align-baseline"
+                    :title="subdir.name"
+                    @click="subdirClick(subdir.name)"
+                  >
+                    {{ subdir.name }}
+                  </button>
                 </div>
               </div>
             </div>
@@ -271,7 +282,7 @@ defineExpose({
                     v-for="fileinfo in filtered_filelist"
                     :key="fileinfo.name"
                     :title="fileinfo.name"
-                    :class="{ 'table-warning': fileinfo.name == chosenFile }"
+                    :class="{ 'table-warning': fileinfo.name === chosenFile }"
                     @click="chosenFile = fileinfo.name"
                     @dblclick="
                       chosenFile = fileinfo.name;
@@ -300,7 +311,7 @@ defineExpose({
             <button
               type="button"
               class="btn btn-primary"
-              :class="{ disabled: settings?.require_name && chosenFile == '' }"
+              :class="{ disabled: settings?.require_name && chosenFile === '' }"
               @click="chooseFile"
             >
               OK

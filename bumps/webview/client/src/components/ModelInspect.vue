@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import VueJsonPretty from "vue-json-pretty";
 import { getDiff } from "json-difference";
 import type { AsyncSocket } from "../asyncSocket.ts";
 import { setupDrawLoop } from "../setupDrawLoop";
@@ -11,7 +10,7 @@ import "vue-json-pretty/lib/styles.css";
 // from https://github.com/microsoft/TypeScript/issues/1897#issuecomment-1228063688
 type json = string | number | boolean | null | json[] | { [key: string]: json };
 
-/** @ts-ignore: intentionally infinite type recursion */
+/** @ts-expect-error: intentionally infinite type recursion */
 const modelJson = ref<json>({});
 
 const props = defineProps<{

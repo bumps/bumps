@@ -1,9 +1,9 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.13/schema.json",
+  "root": true,
+  "$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
   "files": {
     "includes": ["**", "!**/package.json"]
   },
-
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -11,11 +11,39 @@
     "lineWidth": 120
   },
   "linter": {
-    "enabled": false
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "a11y": {
+        "noSvgWithoutTitle": "off"
+      },
+      "performance": {
+        "useDomNodeTextContent": "off"
+      },
+      "correctness": {
+        "noUnusedImports": "warn",
+        "noUnusedVariables": "warn"
+      },
+      "style": {
+        "useConst": "off",
+        "noNonNullAssertion": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "off",
+        "useScopedStyles": "off"
+      }
+    }
+  },
+  "html": {
+    "experimentalFullSupportEnabled": true,
+    "formatter": {
+      "enabled": true
+    }
   },
   "javascript": {
     "formatter": {
-      "quoteStyle": "double"
+      "quoteStyle": "double",
+      "trailingCommas": "es5"
     }
   }
 }

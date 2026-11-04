@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, shallowRef } from "vue";
 import * as Plotly from "plotly.js/lib/core";
-import { Socket } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
 import { configWithSVGDownloadButton } from "../plotly_extras";
 import { setupDrawLoop } from "../setupDrawLoop";
@@ -40,7 +40,7 @@ onMounted(async () => {
 async function fetch_and_draw() {
   const payload = (await props.socket.asyncEmit(
     "get_parameter_trace_plot",
-    current_index.value,
+    current_index.value
   )) as Plotly.PlotlyDataLayoutConfig;
 
   let plotdata = { ...payload };
@@ -67,7 +67,9 @@ async function draw_plot() {
   const opacity = trace_opacity.value;
 
   let data = plot_data.value;
-  data.forEach((line) => ((line as Plotly.ScatterData).opacity = opacity));
+  data.forEach((line) => {
+    (line as Plotly.ScatterData).opacity = opacity;
+  });
 
   await Plotly.react(plot_div.value as HTMLDivElement, [...data], plot_layout.value, plot_config.value);
 }
@@ -95,7 +97,7 @@ async function draw_plot() {
           step="0.01"
           class="form-range"
           @input="draw_plot"
-        />
+        >
       </div>
     </div>
     <div :id="plot_div_id" ref="plot_div" class="flex-grow-1"></div>

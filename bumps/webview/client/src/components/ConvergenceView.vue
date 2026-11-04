@@ -39,7 +39,7 @@ async function fetch_and_draw() {
   const payload = (await props.socket.asyncEmit(
     "get_convergence_plot",
     cutoff.value,
-    trim_portion_preview_value,
+    trim_portion_preview_value
   )) as ConvergencePlotData;
   const { plotdata, portion } = { ...payload };
   const { data, layout } = plotdata ?? {};
@@ -107,7 +107,7 @@ function previewPortion() {
           step="0.01"
           class="form-range"
           @input="draw_plot"
-        />
+        >
       </div>
     </div>
     <div v-if="show_trim_controls" class="row px-2 align-items-center">
@@ -125,7 +125,7 @@ function previewPortion() {
           class="form-range"
           @change="setPortion"
           @input="previewPortion"
-        />
+        >
       </div>
     </div>
     <div ref="plot_div" class="flex-grow-1"></div>

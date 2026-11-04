@@ -11,7 +11,7 @@ import {
   disconnected,
   file_menu_items,
   fileBrowser,
-  FileBrowserSettings,
+  type FileBrowserSettings,
   fitOptions,
   LAYOUTS,
   notifications,
@@ -138,7 +138,7 @@ async function saveFileAs() {
   if (fileBrowser.value) {
     const { extension } = (await socket.asyncEmit("get_serializer")) as { extension: string };
     const filename_in = shared_state.model_file?.filename ?? "";
-    const new_filename = `${filename_in.replace(/(\.[^\.]+)$/, "")}.${extension}`;
+    const new_filename = `${filename_in.replace(/(\.[^.]+)$/, "")}.${extension}`;
     const settings: FileBrowserSettings = {
       title: "Save Problem",
       callback: async (pathlist, filename) => {
@@ -174,7 +174,7 @@ async function saveFile(override?: { pathlist: string[]; filename: string }) {
           await socket.asyncEmit("save_problem_file", pathlist, filename, overwrite);
         }
       }
-    },
+    }
   );
 }
 
@@ -220,7 +220,7 @@ async function saveParameters() {
                 await socket.asyncEmit("save_parameters", pathlist, filename, overwrite);
               }
             }
-          },
+          }
         );
       },
       show_name_input: true,
@@ -275,7 +275,7 @@ file_menu_items.value = [
     <nav v-if="singlePanel === null" class="navbar navbar-expand-sm bg-dark navbar-dark">
       <div class="container-fluid">
         <div class="navbar-brand">
-          <img src="./assets/bumps-icon_256x256x32.png" alt="" height="24" class="d-inline-block align-text-middle" />
+          <img src="./assets/bumps-icon_256x256x32.png" alt="" height="24" class="d-inline-block align-text-middle">
           {{ name ?? "Bumps" }}
         </div>
         <button
@@ -292,8 +292,9 @@ file_menu_items.value = [
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
             <DropDown v-slot="{ hide }" title="File">
               <li v-for="menu_item of file_menu_items" :key="menu_item.text" :title="menu_item.help">
-                <hr v-if="menu_item.text === '---'" class="dropdown-divider" />
+                <hr v-if="menu_item.text === '---'" class="dropdown-divider">
                 <button
+                  type="button"
                   v-else
                   class="btn btn-link dropdown-item"
                   :disabled="menu_item.disabled?.value ?? false"
@@ -310,6 +311,7 @@ file_menu_items.value = [
             <DropDown v-slot="{ hide }" title="Layout">
               <li v-for="layout in LAYOUTS" :key="layout" :class="{ layout: true, active: active_layout === layout }">
                 <button
+                  type="button"
                   class="btn btn-link dropdown-item"
                   :class="{ layout: true, active: active_layout === layout }"
                   @click="
@@ -339,16 +341,14 @@ file_menu_items.value = [
                       aria-valuemin="0"
                       :aria-valuemax="shared_state.active_fit?.num_steps ?? 100"
                       :style="{
-                        width:
-                          (
-                            ((shared_state.active_fit?.step ?? 0) * 100) /
-                            (shared_state.active_fit?.num_steps ?? 1)
-                          ).toFixed(1) + '%',
+                        width: `${(
+                          ((shared_state.active_fit?.step ?? 0) * 100) / (shared_state.active_fit?.num_steps ?? 1)
+                        ).toFixed(1)}%`,
                       }"
                     ></div>
                   </div>
                 </div>
-                <button class="btn btn-danger btn-sm" @click="stopFit">Stop</button>
+                <button type="button" class="btn btn-danger btn-sm" @click="stopFit">Stop</button>
               </div>
               <div v-else class="badge bg-secondary p-1">
                 <div class="align-middle pt-2 pb-1 px-1 d-inline-block">
@@ -357,11 +357,11 @@ file_menu_items.value = [
                     <div class="mt-1" style="height: 3px"></div>
                   </span>
                 </div>
-                <button class="btn btn-light btn-sm me-2" @click="openFitOptions">
+                <button type="button" class="btn btn-light btn-sm me-2" @click="openFitOptions">
                   {{ shared_state.selected_fitter ?? default_fitter }}
                   <Gear />
                 </button>
-                <button class="btn btn-success btn-sm" @click="startFit">Start</button>
+                <button type="button" class="btn btn-success btn-sm" @click="startFit">Start</button>
               </div>
             </h4>
           </div>

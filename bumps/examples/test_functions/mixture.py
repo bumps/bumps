@@ -30,7 +30,8 @@ sequences *k* is not yet determined.
 """
 
 import numpy as np
-from bumps.dream.model import MVNormal, Mixture
+
+from bumps.dream.model import Mixture, MVNormal
 from bumps.names import *
 from bumps.util import push_seed
 
@@ -82,7 +83,7 @@ def make_model(dims=10):
         triples = ((M.mu, M.sigma, I) for M, I in pairs)
         mu, sigma, weight = zip(*triples)
         D = GaussianMixture(weight, mu=mu, sigma=sigma)
-        print("*** Expected entropy: %s bits" % (D.entropy(N=100000) / np.log(2),))
+        print(f"*** Expected entropy: {D.entropy(N=100000) / np.log(2):.2f} bits")
 
     return model
 
@@ -114,7 +115,7 @@ def plot2d(fn, args=None, range=(-10, 10)):
             r = np.linspace(range[0], range[1], 400)
             pylab.plot(x + r, [fn(v) for v in x + r])
             pylab.xlabel(args[0])
-            pylab.ylabel("-log P(%s)" % args[0])
+            pylab.ylabel(f"-log P({args[0]})")
         else:
             r = np.linspace(range[0], range[1], 20)
             x, y = p[args[0]], p[args[1]]
@@ -134,6 +135,6 @@ def plot2d(fn, args=None, range=(-10, 10)):
 
 
 M = VectorPDF(model.nllf, p=[1.0] * dims, plot=plot2d(model.nllf))
-for _, p in M.parameters().items():
+for p in M.parameters().values():
     p.range(-10, 20)
 problem = FitProblem(M)

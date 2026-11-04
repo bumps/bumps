@@ -58,7 +58,7 @@ async function editItem(event: FocusEvent, item_name: "min" | "max" | "value", i
   if (validate_numeric(new_value, true)) {
     props.socket.asyncEmit("set_parameter", parameter.id, item_name, new_value);
   } else {
-    (event.target as HTMLElement).innerText = parameter[`${item_name}_str`];
+    (event.target as HTMLElement).textContent = parameter[`${item_name}_str`];
   }
 }
 
@@ -119,7 +119,7 @@ async function onInactive(param: parameter_info) {
           </div>
         </td>
         <td>
-          <label class="visually-hidden" :for="'parameter' + index">Value</label>
+          <label class="visually-hidden" :for="`parameter${index}`">Value</label>
           <input
             id="'parameter' + index"
             v-model.number="parameters_local01[index]"
@@ -134,7 +134,7 @@ async function onInactive(param: parameter_info) {
             @change="onInactive(parameter)"
             @wheel.prevent
             @touchmove.prevent
-          />
+          >
         </td>
         <td
           class="editable"
@@ -143,7 +143,7 @@ async function onInactive(param: parameter_info) {
           @focus="selectContents"
           @blur="(ev) => editItem(ev, 'value', index)"
           @keydown.enter="(e) => (e.target as HTMLElement).blur()"
-          @keydown.esc="(e) => ((e.target as HTMLElement).innerText = parameters_localstr[index] ?? '')"
+          @keydown.esc="(e) => ((e.target as HTMLElement).textContent = parameters_localstr[index] ?? '')"
         >
           {{ parameters_localstr[index] }}
         </td>
@@ -154,7 +154,7 @@ async function onInactive(param: parameter_info) {
           @focus="selectContents"
           @blur="(ev) => editItem(ev, 'min', index)"
           @keydown.enter="(e) => (e.target as HTMLElement).blur()"
-          @keydown.esc="(e) => ((e.target as HTMLElement).innerText = parameter.min_str)"
+          @keydown.esc="(e) => ((e.target as HTMLElement).textContent = parameter.min_str)"
         >
           {{ parameter.min_str }}
         </td>
@@ -165,7 +165,7 @@ async function onInactive(param: parameter_info) {
           @focus="selectContents"
           @blur="(ev) => editItem(ev, 'max', index)"
           @keydown.enter="(e) => (e.target as HTMLElement).blur()"
-          @keydown.esc="(e) => ((e.target as HTMLElement).innerText = parameter.max_str)"
+          @keydown.esc="(e) => ((e.target as HTMLElement).textContent = parameter.max_str)"
         >
           {{ parameter.max_str }}
         </td>

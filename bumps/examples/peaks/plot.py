@@ -1,5 +1,5 @@
-import sys
 import json
+import sys
 
 import numpy as np
 import pylab
@@ -21,7 +21,8 @@ def load_results(filename):
     """
     Reload results from the json file created by Peaks.save
     """
-    data = json.load(open(filename))
+    with open(filename) as f:
+        data = json.load(f)
     # Convert array info back into numpy arrays
     data.update((k, np.array(data[k])) for k in ("X", "Y", "data", "err", "theory"))
     return data

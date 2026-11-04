@@ -9,8 +9,6 @@ import type { AsyncSocket } from "../asyncSocket";
 import { configWithSVGDownloadButton } from "../plotly_extras";
 import { setupDrawLoop } from "../setupDrawLoop";
 
-const hidden_download = ref<HTMLAnchorElement>();
-
 type PlotInfo = { title: string; change_with: string; model_index: number };
 // const title = "Custom";
 const figtype = ref<string>("");
@@ -45,8 +43,9 @@ const { draw_requested } = setupDrawLoop("updated_parameters", props.socket, fet
 
 async function export_clicked() {
   if (export_data.value) {
-    const a = hidden_download.value as HTMLAnchorElement;
-    a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(export_data.value);
+    const a = document.createElement("a");
+    a.download = "exported_data.csv";
+    a.href = `data:text/csv;charset=utf-8,${encodeURIComponent(export_data.value)}`;
     a.click();
   }
 }
@@ -108,13 +107,13 @@ async function fetch_and_draw() {
         </select>
       </div>
       <div class="col-md-2 d-flex justify-content-end align-items-center">
-        <button v-if="export_data !== null" class="btn btn-primary btn-sm" @click="export_clicked">Export Data</button>
-        <a ref="hidden_download" class="hidden" download="exported_data.csv" type="text/csv">Export Data</a>
+        <button type="button" v-if="export_data !== null" class="btn btn-primary btn-sm" @click="export_clicked">
+          Export Data
+        </button>
       </div>
     </div>
     <div v-if="figtype === 'error'" ref="error_div" class="flex-grow-0">
       <div style="color: red; font-size: larger; font-weight: bold">Plotting error:</div>
-      <!-- eslint-disable-next-line vue/no-v-html -->
       <div v-html="error_text"></div>
     </div>
     <div v-else-if="figtype === 'table'" class="flex-grow-0">
@@ -127,9 +126,5 @@ async function fetch_and_draw() {
 <style scoped>
 .plot-mode {
   width: 100%;
-}
-
-.hidden {
-  display: none;
 }
 </style>

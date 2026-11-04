@@ -76,7 +76,7 @@ function process_settings() {
         processed_value = Number(value);
       }
       return [sname, processed_value];
-    }),
+    })
   );
 }
 
@@ -114,7 +114,7 @@ function validation_error(value: any, field_name: string) {
     return null;
   }
   const float_value = Number(value);
-  if (isNaN(float_value)) {
+  if (Number.isNaN(float_value)) {
     return "not a number";
   }
   if (field_type === "integer" && parseInt(value, 10) !== float_value) {
@@ -146,8 +146,8 @@ defineExpose({
 </script>
 
 <template>
-  <dialog ref="dialog">
-    <div id="fitOptionsModal" class="modal show" tabindex="-1" aria-labelledby="fitOptionsLabel" :aria-hidden="!isOpen">
+  <dialog aria-labelledby="fitOptionsLabel" ref="dialog">
+    <div id="fitOptionsModal" class="modal show" tabindex="-1" :aria-hidden="!isOpen">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
@@ -167,7 +167,7 @@ defineExpose({
                       name="flexRadio"
                       :value="fname"
                       @change="changeActiveFitter"
-                    />
+                    >
                     <label class="form-check-label" :for="fname">
                       {{ default_fitter_settings[fname]?.name }}
                       <span v-if="fname !== 'scipy.leastsq'">({{ fname }})</span>
@@ -184,7 +184,7 @@ defineExpose({
                       name="flexRadio"
                       :value="fname"
                       @change="changeActiveFitter"
-                    />
+                    >
                     <label class="form-check-label" :for="fname">
                       {{ default_fitter_settings[fname]?.name }}
                       <span v-if="fname !== 'scipy.leastsq'">({{ fname }})</span>
@@ -194,9 +194,7 @@ defineExpose({
               </div>
               <div class="row p-2">
                 <div v-if="selected_fitter_local in OPTIONS_HELP" class="row p-1 text-secondary">
-                  <span
-                    ><em>{{ OPTIONS_HELP[selected_fitter_local] }}</em></span
-                  >
+                  <span><em>{{ OPTIONS_HELP[selected_fitter_local] }}</em></span>
                 </div>
                 <div v-for="(value, sname) in active_settings" :key="sname" class="row p-1">
                   <label
@@ -209,7 +207,7 @@ defineExpose({
                   <div class="col-sm-8">
                     <select
                       v-if="Array.isArray(fit_fields[sname]?.stype)"
-                      :id="'fitter_setting_' + sname"
+                      :id="`fitter_setting_${sname}`"
                       v-model="active_settings[sname]"
                       class="form-select"
                       :name="sname"
@@ -220,15 +218,15 @@ defineExpose({
                     </select>
                     <input
                       v-else-if="fit_fields[sname]?.stype === 'boolean'"
-                      :id="'fitter_setting_' + sname"
+                      :id="`fitter_setting_${sname}`"
                       v-model="active_settings[sname]"
                       class="form-check-input m-2"
                       type="checkbox"
                       :name="sname"
-                    />
+                    >
                     <input
                       v-else
-                      :id="'fitter_setting_' + sname"
+                      :id="`fitter_setting_${sname}`"
                       v-model="active_settings[sname]"
                       :class="{
                         'form-control': true,
@@ -238,7 +236,7 @@ defineExpose({
                       :name="sname"
                       :title="validation_error(active_settings[sname], sname) ?? fit_fields[sname]?.description"
                       @keydown.enter="() => save()"
-                    />
+                    >
                   </div>
                 </div>
               </div>

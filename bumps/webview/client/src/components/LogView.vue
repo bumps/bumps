@@ -31,6 +31,7 @@ function timestampToDate(timestamp: string) {
 <template>
   <div class="container">
     <button
+      type="button"
       class="btn btn-primary btn-sm me-2"
       @click="
         () =>
@@ -41,7 +42,7 @@ function timestampToDate(timestamp: string) {
     >
       Refresh
     </button>
-    <button class="btn btn-danger btn-sm me-2" @click="() => (log_info = [])">Clear</button>
+    <button type="button" class="btn btn-danger btn-sm me-2" @click="() => (log_info = [])">Clear</button>
 
     <table class="table">
       <thead>

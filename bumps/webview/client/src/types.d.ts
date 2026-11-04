@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 /// <reference types="@types/plotly.js" />
 /// <reference types="@types/uuid"/>
 /// <reference types="vite-svg-loader" />

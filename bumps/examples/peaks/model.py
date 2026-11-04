@@ -1,8 +1,8 @@
 import numpy as np
 
-from bumps.names import FitProblem, Parameter, cosd, pmath, sind
+from bumps.names import FitProblem, Parameter, cosd, sind
 
-from peaks import Background, Cauchy, Gaussian, Peaks
+from .peaks import Background, Cauchy, Gaussian, Peaks
 
 
 def read_data():

@@ -44,7 +44,7 @@ async function fetch_and_draw(latest_timestamp?: string) {
     max_rows.value,
     n_bins.value,
     output_vars,
-    timestamp,
+    timestamp
   )) as Plotly.PlotlyDataLayoutConfig;
   const plotdata = { ...payload };
   const { data, layout } = plotdata;
@@ -70,7 +70,7 @@ async function fetch_and_draw(latest_timestamp?: string) {
         return;
       }
       // we are putting an array of numbers in customdata on the server side.
-      vars.value = ev.points[0]?.data.customdata as number[];
+      vars.value = (ev.points[0]?.data as { customdata?: unknown } | undefined)?.customdata as number[];
       fetch_and_draw();
     });
     callback_registered.value = true;
@@ -93,25 +93,19 @@ function reset_vars() {
           class="form-check-input"
           type="checkbox"
           @change="fetch_and_draw()"
-        />
+        >
         <label class="form-check-label pe-2 w-auto text-wrap" for="sort-by-correlation">Sort by correlation </label>
       </div>
       <div class="col-5 d-flex flex-row align-items-center">
         <label class="col-form-label w-auto text-nowrap flex-fill" for="max-rows">Max. rows</label>
-        <input
-          id="max-rows"
-          v-model="max_rows"
-          class="form-control flex-fill"
-          type="number"
-          @change="fetch_and_draw()"
-        />
+        <input id="max-rows" v-model="max_rows" class="form-control flex-fill" type="number" @change="fetch_and_draw()">
       </div>
       <div class="col-4 d-flex flex-row align-items-center">
         <label class="col-form-label w-auto" for="n-bins">Bins</label>
-        <input id="n-bins" v-model="n_bins" class="form-control flex-fill" type="number" @change="fetch_and_draw()" />
+        <input id="n-bins" v-model="n_bins" class="form-control flex-fill" type="number" @change="fetch_and_draw()">
       </div>
     </div>
-    <button v-if="vars.length > 0" class="btn btn-primary" @click="reset_vars">Reset plot</button>
+    <button type="button" v-if="vars.length > 0" class="btn btn-primary" @click="reset_vars">Reset plot</button>
     <div class="flex-grow-1 position-relative">
       <div ref="plot_div" class="w-100 h-100 plot-div"></div>
       <div
