@@ -311,7 +311,7 @@ Setting(
     then set population size to -pop independent of fit parameters.""",
 )
 Setting("burn", "Burn-in steps", int, "Estimated number generations before convergence")
-Setting("samples", "Samples", int, "Number of samples to draw = pop*pars*steps.")
+Setting("samples", "Samples", int, "Number of samples to draw. For dream, samples = pop*pars*steps.")
 Setting(
     "thin",
     "Thinning factor",
@@ -342,6 +342,17 @@ Setting(
     bool,
     """\
     After fitting, trim samples from early in the Markov chains before it converged.""",
+)
+
+# Importance sampling
+Setting(
+    "nu",
+    "Proposal degrees of freedom",
+    float,
+    """\
+    Degrees of freedom of the multivariate t distribution that importance sampling
+    draws from. It has the covariance of the fit, with heavier tails as nu gets
+    smaller. Use 0 for a normal distribution. Values between 0 and 2 are invalid.""",
 )
 
 # Parallel tempering

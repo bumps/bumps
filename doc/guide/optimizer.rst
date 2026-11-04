@@ -10,6 +10,7 @@ control parameters:
 * :ref:`fit-lm`
 * :ref:`fit-amoeba`
 * :ref:`fit-dream`
+* :ref:`fit-importance`
 * :ref:`fit-de`
 * :ref:`fit-newton`
 * :ref:`fit-rl` [experimental]
@@ -43,6 +44,9 @@ correct uncertainty, the function to be optimized should be a conditional
 probability density, with *nllf* as the negative log likelihood function
 of seeing point $x$ in the parameter space.  Other functions
 can be fitted, but uncertainty estimates will be meaningless.
+:ref:`fit-importance` is a cheaper middle ground: it uses the covariance
+matrix to draw a weighted sample from the same distribution, and reports
+how well the covariance matrix describes it.
 
 Most algorithms have been adapted to run in parallel at least to some degree.
 The  implementation is not heavily tuned, either in terms of minimizing the
@@ -672,6 +676,83 @@ References
     *Efficient multivariate entropy estimation via k-nearest neighbour distances.*
     Annals of Statistics 2019, 47 (1), 288-318.
     DOI: `10.1214/18-AOS1688 <http://dx.doi.org/10.1214/18-AOS1688>`_
+
+.. _fit-importance:
+
+Importance Sampling
+===================
+
+Importance sampling [#Owen2013]_ turns the covariance matrix at the best fit
+into a sample from the posterior distribution, which is analyzed with the same
+statistics and plots as :ref:`fit-dream`. It draws points from a distribution
+centered on the best fit with the covariance matrix of the fit, then weights
+each point $x$ by $P(x)/Q(x)$, where $P(x) \propto e^{-\text{nllf}(x)}$ is the
+posterior probability and $Q(x)$ is the probability of drawing $x$. The
+weighted sample follows the actual likelihood rather than the gaussian
+approximation, so the credible intervals and correlation plots show skewed or
+bounded uncertainty, provided the posterior is not too far from the gaussian
+approximation.
+
+The points are drawn from a multivariate t distribution with $\nu$ degrees of
+freedom, as $x = \mu + z \sqrt{\nu/y}$ with $z \sim N(0, \Sigma')$ and
+$y \sim \chi^2_\nu$, where $\mu$ is the best fit and $\Sigma$ is its covariance
+matrix. Using $\Sigma' = \Sigma (\nu - 2)/\nu$ gives the distribution the
+covariance $\Sigma$. Points outside the parameter bounds are redrawn without
+evaluating the model.
+
+When to use
+-----------
+
+Use this method after :ref:`fit-lm` or another optimizer has found the
+minimum, to check whether the uncertainty from the covariance matrix holds up,
+and to get credible intervals and correlation plots for much less than the
+cost of a :ref:`fit-dream` run. Each sample needs one function evaluation, and
+the samples are independent, so there is no burn-in and the evaluations run in
+parallel.
+
+The result is only as good as the match between the covariance matrix and the
+posterior distribution. The match is measured by the effective sample size
+[#Kish1965]_, $\text{ESS} = (\sum w)^2 / \sum w^2$ for weights $w$, which is
+reported at the end of the fit. The ESS is close to the number of samples when
+the posterior is nearly gaussian, and the uncertainty in the statistics scales
+as $1/\sqrt{\text{ESS}}$. Bumps warns that the uncertainties are unreliable if
+the ESS is less than 10% of the number of samples; use :ref:`fit-dream`
+instead. Importance sampling only explores the region around the best fit, so
+it will not find other minima. Starting away from the minimum also gives a low
+ESS, and Bumps warns if any sample improves on the starting point by more than
+1 in nllf.
+
+Options
+-------
+
+*Samples* is the number of points to draw, using ``--samples=n`` from the
+command line. The default is 10000.
+
+*Proposal degrees of freedom* is $\nu$ for the t distribution, using
+``--nu=v`` from the command line. Smaller values give heavier tails, which keep
+the weights bounded when the posterior is wider or narrower than the covariance
+matrix suggests, or has heavier tails than a gaussian. The cost is a lower ESS
+when the covariance matrix is exact, more so with many parameters. For a
+gaussian posterior with 20 parameters, the default $\nu = 10$ gives an ESS of
+about 70% of the samples. If the posterior is 30% wider than the covariance
+matrix suggests, the ESS is about 30% with $\nu = 10$, but less than 1% for a
+normal distribution, which you can select with ``--nu=0``.
+
+Use ``--fit=importance`` to select importance sampling from the command line.
+The sampling starts from the current parameter values, so start from the result
+of a previous fit using ``--pars=path/to/model.par``. Resuming an importance
+sampling fit adds samples drawn from the same distribution.
+
+References
+----------
+
+.. [#Owen2013]
+    Owen, A. B.
+    *Monte Carlo theory, methods and examples*; 2013; Chapter 9.
+
+.. [#Kish1965]
+    Kish, L.
+    *Survey Sampling*; Wiley: New York, 1965.
 
 .. _fit-ps:
 

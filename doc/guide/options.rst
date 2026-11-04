@@ -132,12 +132,13 @@ for setting the number of iterations of the algorithm, used when
 :ref:`option-steps` is zero. Population optimizers perform :ref:`option-pop`
 times the number of parameters in the fit for each step of the operation,
 so given the desired number of samples, you can control the number of steps.
-The number of samples is particularly convenient for :ref:`fit-dream`
-(the only optimizer for which it is implemented at the moment), where 100,000
-samples are needed to estimate the 1-sigma interval to 2 digits of accuracy
-(assuming an approximately gaussian distribution), and 1,000,000 samples are
-needed for the 95% confidence interval.  Like :ref:`option-steps`, the total
-evaluations does not include any :ref:`option-burn` iterations.
+The number of samples is particularly convenient for :ref:`fit-dream`, where
+100,000 samples are needed to estimate the 1-sigma interval to 2 digits of
+accuracy (assuming an approximately gaussian distribution), and 1,000,000
+samples are needed for the 95% confidence interval.  Like :ref:`option-steps`,
+the total evaluations does not include any :ref:`option-burn` iterations.
+For :ref:`fit-importance`, *samples* is the number of points drawn from the
+covariance matrix, each requiring one function evaluation.
 
 .. _option-ftol:
 
@@ -205,16 +206,17 @@ Optimizer Controls
 
 *Fit Algorithm* selects the optimizer.  The available optimizers are:
 
-  ====== ================
-  amoeba :ref:`fit-amoeba`
-  de     :ref:`fit-de`
-  dream  :ref:`fit-dream`
-  lm     :ref:`fit-lm`
-  newton :ref:`fit-newton`
-  pt     :ref:`fit-pt`
-  ps     :ref:`fit-ps`
-  rl     :ref:`fit-rl`
-  ====== ================
+  ========== ====================
+  amoeba     :ref:`fit-amoeba`
+  de         :ref:`fit-de`
+  dream      :ref:`fit-dream`
+  importance :ref:`fit-importance`
+  lm         :ref:`fit-lm`
+  newton     :ref:`fit-newton`
+  pt         :ref:`fit-pt`
+  ps         :ref:`fit-ps`
+  rl         :ref:`fit-rl`
+  ========== ====================
 
 The default fit method is ``--fit=amoeba``.
 
@@ -338,6 +340,18 @@ the parent in differential evolution.
 ------------
 
 *Simplex radius* is the radius of the initial simplex in :ref:`fit-amoeba`
+
+
+.. _option-nu:
+
+``--nu``
+--------
+
+*Proposal degrees of freedom* sets the tails of the multivariate t
+distribution that :ref:`fit-importance` draws from. The distribution has
+the covariance matrix of the fit for any $\nu > 2$, with heavier tails as
+$\nu$ gets smaller. Use ``--nu=0`` for a multivariate normal distribution.
+Default is 10.
 
 
 .. _option-nT:

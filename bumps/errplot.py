@@ -89,10 +89,18 @@ def error_points_from_state(state, nshown=50, random=True, portion: Optional[flo
     to generation), but not random if your burn-in was too short, and
     you want to select from the end.
 
+    If the draw has weights, such as from importance sampling, then *nshown*
+    points are chosen at random in proportion to their weights, and *random*
+    is ignored.
+
     Returns *points* for :func:`calc_errors`.
     """
 
-    points = state.draw(portion=portion).points
+    draw = state.draw(portion=portion)
+    points = draw.points
+    if draw.weights is not None:
+        p = draw.weights / np.sum(draw.weights)
+        return points[np.random.choice(len(points), size=nshown, p=p)]
     if points.shape[0] < nshown:
         nshown = points.shape[0]
     # randomize the draw; skip the last point since state.keep_best() put

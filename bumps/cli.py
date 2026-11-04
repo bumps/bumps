@@ -848,7 +848,9 @@ def interpret_fit_options(options: BumpsOptions):
                 draw = state.draw()
                 # TODO: if there are derived variables then problem.show() doesn't work
                 # TODO: sample from whole population, not just the end, to reduce autocorrelation
-                if show_cov:
+                if show_cov and draw.weights is not None:
+                    cov = np.cov(draw.points.T, aweights=draw.weights)
+                elif show_cov:
                     cov = np.cov(draw.points[-1000:].T)
                 vstats = var_stats(draw)
                 # dx = np.array([(v.p68[1] - v.p68[0]) / 2 for v in vstats])

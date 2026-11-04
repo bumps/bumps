@@ -1306,7 +1306,7 @@ def _get_correlation_plot(
         start_time = time.time()
         logger.info(f"queueing new correlation plot... {start_time}")
         draw = fit_state.draw(vars=vars)
-        c = Corr2d(draw.points.T, bins=nbins, labels=draw.labels)
+        c = Corr2d(draw.points.T, bins=nbins, labels=draw.labels, weights=draw.weights)
         fig = c.plot(sort=sort, max_rows=max_rows)
         logger.info(f"time to render but not serialize... {time.time() - start_time}")
         serialized = to_json_compatible_dict(fig.to_dict())
