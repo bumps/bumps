@@ -28,6 +28,7 @@ try:
                 cdf += p[k]
                 if u <= cdf:
                     result[index] = choices[k]
+                    break
             # else: should never get here if choices sum to 1
         return result
 
@@ -272,3 +273,29 @@ population.
 
 if __name__ == "__main__":
     _check()
+
+
+def test_pchoice():
+    import numpy as np
+
+    @njit()
+    def uniforms(seed, size):
+        rng.seed(seed)
+        return rng.rand(size)
+
+    @njit()
+    def weighted_choices(seed, choices, weights, size):
+        rng.seed(seed)
+        return pchoice(choices, size=size, p=weights)
+
+    choices = np.array([1 / 3, 2 / 3, 1.0])
+    original = rng.get_state()
+    try:
+        for weights in ([1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.2, 0.3, 0.5]):
+            weights = np.array(weights)
+            draws = uniforms(7, 1000)
+            expected = choices[np.searchsorted(np.cumsum(weights), draws)]
+            actual = weighted_choices(7, choices, weights, len(draws))
+            np.testing.assert_array_equal(actual, expected)
+    finally:
+        rng.set_state(original)
