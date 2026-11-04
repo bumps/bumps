@@ -10,20 +10,20 @@ function emitWithReply(reply: unknown, ...args: any[]) {
   return { emit, result };
 }
 
-test("passes plain replies through", async () => {
+test("Passes plain replies through", async () => {
   const { emit, result } = emitWithReply({ a: 1 }, "arg");
   await expect(result).resolves.toEqual({ a: 1 });
   expect(emit).toHaveBeenCalledWith("some_event", "arg", expect.any(Function));
 });
 
-test("decodes msgpack replies (Uint8Array and ArrayBuffer)", async () => {
+test("Decodes msgpack replies (Uint8Array and ArrayBuffer)", async () => {
   const packed = encode({ x: [1, 2, 3] });
   await expect(emitWithReply(packed).result).resolves.toEqual({ x: [1, 2, 3] });
   const buffer = packed.buffer.slice(packed.byteOffset, packed.byteOffset + packed.byteLength);
   await expect(emitWithReply(buffer).result).resolves.toEqual({ x: [1, 2, 3] });
 });
 
-test("awaits a trailing callback with the decoded result", async () => {
+test("Awaits a trailing callback with the decoded result", async () => {
   const callback = vi.fn();
   const { emit, result } = emitWithReply(encode("hi"), "arg", callback);
   await expect(result).resolves.toBe("hi");

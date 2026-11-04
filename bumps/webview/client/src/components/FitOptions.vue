@@ -114,7 +114,8 @@ function validation_error(value: any, field_name: string) {
     return null;
   }
   const float_value = Number(value);
-  if (Number.isNaN(float_value)) {
+  // Number("") is 0, so check for a blank field explicitly
+  if (String(value).trim() === "" || Number.isNaN(float_value)) {
     return "not a number";
   }
   if (field_type === "integer" && parseInt(value, 10) !== float_value) {

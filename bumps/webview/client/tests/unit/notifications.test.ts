@@ -8,14 +8,14 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-test("notification without timeout shows a spinner and stays until cancelled", () => {
+test("Notification without timeout shows a spinner and stays until cancelled", () => {
   const id = addNotification({ title: "Fitting", content: "running" });
   expect(notifications.value).toEqual([{ title: "Fitting", content: "running", id, spinner: true }]);
   cancelNotification(id);
   expect(notifications.value).toHaveLength(0);
 });
 
-test("notification with timeout removes itself", () => {
+test("Notification with timeout removes itself", () => {
   vi.useFakeTimers();
   addNotification({ title: "Saved", content: "ok", timeout: 1000, id: "saved" });
   expect(notifications.value[0]).toMatchObject({ id: "saved", spinner: false });
@@ -25,7 +25,7 @@ test("notification with timeout removes itself", () => {
   expect(notifications.value).toHaveLength(0);
 });
 
-test("cancelling an unknown id is a no-op", () => {
+test("Cancelling an unknown id is a no-op", () => {
   addNotification({ title: "a", content: "b", id: "keep" });
   cancelNotification("missing");
   expect(notifications.value.map((n) => n.id)).toEqual(["keep"]);

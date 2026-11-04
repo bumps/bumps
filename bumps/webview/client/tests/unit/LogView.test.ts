@@ -5,7 +5,7 @@ import { fakeSocket } from "./fakeSocket";
 
 const entry = (title: string, message: string, timestamp = "0") => ({ message: { title, message }, timestamp });
 
-test("shows existing log messages on mount", async () => {
+test("Shows existing log messages on mount", async () => {
   const socket = fakeSocket({ get_topic_messages: [entry("Init", "started")] });
   const wrapper = mount(LogView, { props: { socket } });
   await flushPromises();
@@ -15,7 +15,7 @@ test("shows existing log messages on mount", async () => {
   expect(wrapper.text()).toContain("Init");
 });
 
-test("appends messages pushed by the server", async () => {
+test("Appends messages pushed by the server", async () => {
   const socket = fakeSocket({ get_topic_messages: [] });
   const wrapper = mount(LogView, { props: { socket } });
   await flushPromises();

@@ -2,9 +2,9 @@ import { expect, panes, test } from "./fixtures";
 
 // The server is started with examples/curvefit/curve.py: a straight line with parameters m and b.
 
-test("loads the model and shows its parameters", async ({ page }) => {
+test("Loads the model and shows its parameters", async ({ page }) => {
   const { right } = panes(page);
-  await right.getByRole("link", { name: "Summary", exact: true }).click();
+  await right.getByRole("tab", { name: "Summary", exact: true }).click();
   const rows = right.locator("tbody tr");
   // listed alphabetically
   await expect(rows.locator("td:first-child")).toHaveText(["b", "m"]);
@@ -12,7 +12,7 @@ test("loads the model and shows its parameters", async ({ page }) => {
 
 test("Data panel draws the model plot", async ({ page }) => {
   const { left } = panes(page);
-  await left.getByRole("link", { name: "Data", exact: true }).click();
+  await left.getByRole("tab", { name: "Data", exact: true }).click();
   await expect(left.locator("#model-select option")).toHaveCount(1);
   await expect(left.locator(".tab-content svg").first()).toBeVisible();
 });
@@ -20,7 +20,7 @@ test("Data panel draws the model plot", async ({ page }) => {
 for (const title of ["Data", "Summary", "Log", "History", "Convergence", "Model", "Parameters"]) {
   test(`${title} panel opens without errors`, async ({ page }) => {
     const { left } = panes(page);
-    const tab = left.getByRole("link", { name: title, exact: true });
+    const tab = left.getByRole("tab", { name: title, exact: true });
     await tab.click();
     await expect(tab).toHaveClass(/active/);
     await expect(left.locator(".tab-content > *").first()).toBeVisible();
@@ -29,9 +29,9 @@ for (const title of ["Data", "Summary", "Log", "History", "Convergence", "Model"
   });
 }
 
-test("running a fit completes and is logged", async ({ page }) => {
+test("Running a fit completes and is logged", async ({ page }) => {
   const { left } = panes(page);
-  await left.getByRole("link", { name: "Log", exact: true }).click();
+  await left.getByRole("tab", { name: "Log", exact: true }).click();
   // wait for the log history to load before counting, or earlier fits arrive after `before` is read
   await expect(left.getByText(/^Model loaded:/)).toBeVisible();
   const done = left.locator("summary", { hasText: /^Done with chisq/ });

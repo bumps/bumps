@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import TagFilter from "./ParameterTagFilter.vue";
 import type { AsyncSocket } from "../asyncSocket.ts";
 import { setupDrawLoop } from "../setupDrawLoop";
+import TagFilter from "./ParameterTagFilter.vue";
 
 // const title = "Parameters";
 // const active_parameter = ref("");
@@ -45,15 +45,24 @@ async function fetch_and_draw() {
 }
 
 async function editItem(event: FocusEvent, item_name: "min" | "max" | "value", index: number) {
-  const new_value = (event.target as HTMLElement).textContent;
+  const parameter = parameters_local.value[index];
+  if (!parameter) {
+    return;
+  }
+  const new_value = (event.target as HTMLElement).textContent?.trim();
   if (validate_numeric(new_value)) {
-    props.socket.asyncEmit("set_parameter", parameters_local.value[index]?.id, item_name, new_value);
+    props.socket.asyncEmit("set_parameter", parameter.id, item_name, new_value);
+  } else {
+    (event.target as HTMLElement).textContent = parameter[`${item_name}_str`];
   }
 }
 
-function validate_numeric(value: string, allow_inf: boolean = false) {
+function validate_numeric(value: string | undefined, allow_inf: boolean = false) {
   if (allow_inf && (value === "inf" || value === "-inf")) {
     return true;
+  }
+  if (value === "" || value === "NaN" || value === undefined) {
+    return false;
   }
   return !Number.isNaN(Number(value));
 }

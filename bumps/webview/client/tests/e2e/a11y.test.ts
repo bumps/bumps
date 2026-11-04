@@ -15,7 +15,7 @@ const KNOWN: Record<string, string> = {
 
 for (const title of ["Data", "Summary", "Log", "History", "Convergence", "Model", "Parameters"]) {
   test(`${title} panel has no serious a11y violations`, async ({ page }) => {
-    const tab = panes(page).left.getByRole("link", { name: title, exact: true });
+    const tab = panes(page).left.getByRole("tab", { name: title, exact: true });
     await tab.click();
     await expect(tab).toHaveClass(/active/);
     await page.waitForTimeout(500); // let the panel fetch and draw

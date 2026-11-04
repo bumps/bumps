@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 
 type parameter_info = {
   name: string;
@@ -38,6 +38,13 @@ const COLORS: string[] = [
   "#6A07B6" /** purple */,
   "#a70a9d" /** pink */,
 ];
+
+// forget selected tags that no parameter has any more (e.g. after loading a new model),
+// since there is no button left to deselect them with
+watch(tag_colors, (colors) => {
+  tags_to_show.value = tags_to_show.value.filter((t) => t in colors);
+  tags_to_hide.value = tags_to_hide.value.filter((t) => t in colors);
+});
 
 const getBackgroundColor = (tag: string, color: string, toHide: boolean) => {
   let bgColor: string;
@@ -111,7 +118,6 @@ defineExpose({
             'background-color': `${getBackgroundColor(tag as string, tag_color, true)}`,
           }"
           @click="toggle(tag as string, 'show')"
-          @keydown.enter="toggle(tag as string, 'show')"
         >
           {{ tag }}
         </button>
@@ -130,7 +136,6 @@ defineExpose({
             'background-color': `${getBackgroundColor(tag as string, tag_color, false)}`,
           }"
           @click="toggle(tag as string, 'hide')"
-          @keydown.enter="toggle(tag as string, 'hide')"
         >
           {{ tag }}
         </button>

@@ -30,6 +30,7 @@
       },
       "suspicious": {
         "noExplicitAny": "off",
+        "noAssignInExpressions": "off",
         "useScopedStyles": "off"
       }
     }
