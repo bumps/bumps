@@ -29,7 +29,6 @@ from numpy.typing import NDArray
 if TYPE_CHECKING:
     from h5py import Group
     from bumps.dream.state import MCMCDraw
-    from bumps.importance import ImportanceSample
 
 
 class ConsoleMonitor(monitor.TimedUpdate):
@@ -1101,137 +1100,6 @@ class DreamFit(FitBase):
         return steps
 
 
-class ImportanceFit(FitBase):
-    """
-    Importance sampling from the covariance matrix at the current point.
-
-    Run this after an optimizer such as lm has found the best fit. Points are
-    drawn from a multivariate t distribution with the covariance matrix of the
-    fit, and weighted by the ratio of the posterior probability to the proposal
-    probability. See :mod:`bumps.importance` for details.
-    """
-
-    name = "Importance sampling"
-    id = "importance"
-    settings = [
-        ("samples", int(1e4)),
-        ("nu", 10.0),
-    ]
-
-    def __init__(self, problem):
-        FitBase.__init__(self, problem)
-        self.state = None
-
-    def solve(self, monitors: MonitorRunner, mapper=None, **options):
-        from .importance import ImportanceSample, Proposal, batch_size, draw_within_bounds
-
-        options = _fill_defaults(options, self.settings)
-        problem = self.problem
-        mapper = mapper if mapper else (lambda p: list(map(problem.nllf, p)))
-        labels = problem.labels()
-        if not labels:
-            raise ValueError("There are no fitted parameters to sample")
-        nu = float(options["nu"])
-
-        state = self.state
-        if isinstance(state, ImportanceSample) and state.labels == labels and state.proposal.nu == nu:
-            # Resume by adding points drawn from the same proposal.
-            monitors.info(f"# adding to {state.Nsamples} existing samples")
-        else:
-            self.state = None
-            x0 = problem.getp()
-            nllf0 = problem.nllf()
-            state = ImportanceSample(Proposal(x0, problem.cov(x0), nu), labels, title=problem.name)
-            state.update_best(x0, -nllf0)
-            state.start_logp = -nllf0
-
-        # TODO: Add derived/visible/integer variable support to other optimizers.
-        fn, derived_labels = getattr(problem, "derive_vars", (None, None))
-        if fn is not None:
-            state.set_derived_vars(fn, labels=derived_labels)
-        visible_vars = getattr(problem, "visible_vars", None)
-        if visible_vars is not None:
-            state.set_visible_vars(visible_vars)
-        integer_vars = getattr(problem, "integer_vars", None)
-        if integer_vars is not None:
-            state.set_integer_vars(integer_vars)
-
-        bounds = problem.bounds()
-        remaining = int(options["samples"])
-        batch = batch_size(len(labels), remaining)
-        step = 0
-        while remaining > 0 and not monitors.stopping():
-            n = min(batch, remaining)
-            points, logq, drawn, accepted = draw_within_bounds(state.proposal, n, bounds, max_draws=100 * n)
-            if not len(points):
-                raise RuntimeError(
-                    f"None of the {drawn} points drawn from the covariance matrix were within the"
-                    " parameter bounds. Check that the fit is at the minimum, and that every"
-                    " parameter affects the fit."
-                )
-            nllf = np.asarray(mapper(points), "d")
-            state.append(points, -nllf, logq, drawn=drawn, accepted=accepted)
-            # Make the growing sample available to the uncertainty monitor.
-            self.state = monitors.history.fit_state = state
-            remaining -= len(points)
-            step += 1
-            x, logp = state.best()
-            finite = nllf[np.isfinite(nllf)]
-            monitors(
-                step=step,
-                point=x,
-                value=-logp,
-                population_points=points,
-                population_values=finite if len(finite) else np.array([-logp]),
-            )
-
-        if state.Nsamples:
-            if not np.any(np.isfinite(state.logp)):
-                raise RuntimeError("None of the sampled points have a finite likelihood")
-            monitors.info(state.summary())
-        x, logp = state.best()
-        return x, -logp
-
-    def stderr(self):
-        """
-        Approximate standard error as 1/2 the 68% interval of the weighted
-        sample, or None if there is no sample.
-        """
-        from .dream.stats import var_stats
-
-        if self.state is None or not self.state.Nsamples:
-            return None
-        vstats = var_stats(self.state.draw())
-        return np.array([(v.p68[1] - v.p68[0]) / 2 for v in vstats], "d")
-
-    def entropy(self, **kw):
-        return self.state.entropy(**kw)
-
-    def show(self):
-        if self.state is not None and self.state.Nsamples:
-            print(self.state.summary())
-
-    @staticmethod
-    def h5dump(group: "Group", state: "ImportanceSample"):
-        from .importance import h5dump
-
-        h5dump(group, state)
-
-    @staticmethod
-    def h5load(group: "Group") -> "ImportanceSample":
-        from .importance import h5load
-
-        return h5load(group)
-
-    @classmethod
-    def max_steps(cls, problem: "bumps.fitproblem.FitProblem", options: Optional[Dict[str, Any]] = None) -> int:
-        from .importance import batch_size
-
-        options = _fill_defaults(options, cls.settings)
-        samples = int(options["samples"])
-        return -(-samples // batch_size(len(problem.getp()), samples))
-
-
 class Resampler(FitBase):
     # TODO: why isn't cli.resynth using this?
 
@@ -1601,7 +1469,6 @@ register(DEFit)
 register(DreamFit)
 register(BFGSFit)
 register(MPFit)
-register(ImportanceFit)
 register(PTFit, active=False)
 # register(PSFit, active=False)
 # register(RLFit, active=False)
@@ -2052,7 +1919,9 @@ def fit(
     previous result.
 
     If *export=path* is provided, generate the standard plots and export files
-    to the specified directory.
+    to the specified directory. For fitters without an MCMC sample, the
+    uncertainty report and plots come from points drawn from the covariance
+    matrix and weighted by the likelihood (see :func:`bumps.importance.sample_from_cov`).
 
     You can set *name=basename* as the base file name for all files stored in
     the export directory, or use
@@ -2172,7 +2041,7 @@ def fit(
     if export is not None:
         from .api import export_fit
 
-        export_fit(export, problem, result, basename=name)
+        export_fit(export, problem, result, basename=name, mapper=mapper)
 
     return result
 
@@ -2256,10 +2125,6 @@ def test_fitters():
             name=fitter_name,
         )
         assert np.allclose(result.x, expected_value, rtol=fit_value_tol)
-        if fitter_name == "importance":
-            # The model is linear, so the posterior is gaussian and the sampled
-            # error bars match the covariance to within the sampling error.
-            assert np.allclose(result.dx, expected_error, rtol=0.05)
-        elif fitter_name != "dream":
+        if fitter_name != "dream":
             # dream error bars vary too much to test
             assert np.allclose(result.dx, expected_error, rtol=fit_error_tol)

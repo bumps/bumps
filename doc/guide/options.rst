@@ -132,13 +132,12 @@ for setting the number of iterations of the algorithm, used when
 :ref:`option-steps` is zero. Population optimizers perform :ref:`option-pop`
 times the number of parameters in the fit for each step of the operation,
 so given the desired number of samples, you can control the number of steps.
-The number of samples is particularly convenient for :ref:`fit-dream`, where
-100,000 samples are needed to estimate the 1-sigma interval to 2 digits of
-accuracy (assuming an approximately gaussian distribution), and 1,000,000
-samples are needed for the 95% confidence interval.  Like :ref:`option-steps`,
-the total evaluations does not include any :ref:`option-burn` iterations.
-For :ref:`fit-importance`, *samples* is the number of points drawn from the
-covariance matrix, each requiring one function evaluation.
+The number of samples is particularly convenient for :ref:`fit-dream`
+(the only optimizer for which it is implemented at the moment), where 100,000
+samples are needed to estimate the 1-sigma interval to 2 digits of accuracy
+(assuming an approximately gaussian distribution), and 1,000,000 samples are
+needed for the 95% confidence interval.  Like :ref:`option-steps`, the total
+evaluations does not include any :ref:`option-burn` iterations.
 
 .. _option-ftol:
 
@@ -206,17 +205,16 @@ Optimizer Controls
 
 *Fit Algorithm* selects the optimizer.  The available optimizers are:
 
-  ========== ====================
-  amoeba     :ref:`fit-amoeba`
-  de         :ref:`fit-de`
-  dream      :ref:`fit-dream`
-  importance :ref:`fit-importance`
-  lm         :ref:`fit-lm`
-  newton     :ref:`fit-newton`
-  pt         :ref:`fit-pt`
-  ps         :ref:`fit-ps`
-  rl         :ref:`fit-rl`
-  ========== ====================
+  ====== ================
+  amoeba :ref:`fit-amoeba`
+  de     :ref:`fit-de`
+  dream  :ref:`fit-dream`
+  lm     :ref:`fit-lm`
+  newton :ref:`fit-newton`
+  pt     :ref:`fit-pt`
+  ps     :ref:`fit-ps`
+  rl     :ref:`fit-rl`
+  ====== ================
 
 The default fit method is ``--fit=amoeba``.
 
@@ -342,18 +340,6 @@ the parent in differential evolution.
 *Simplex radius* is the radius of the initial simplex in :ref:`fit-amoeba`
 
 
-.. _option-nu:
-
-``--nu``
---------
-
-*Proposal degrees of freedom* sets the tails of the multivariate t
-distribution that :ref:`fit-importance` draws from. The distribution has
-the covariance matrix of the fit for any $\nu > 2$, with heavier tails as
-$\nu$ gets smaller. Use ``--nu=0`` for a multivariate normal distribution.
-Default is 10.
-
-
 .. _option-nT:
 
 ``--nT``
@@ -461,13 +447,44 @@ Output Controls
 
 .. _option-err:
 
-```--err``
-----------
+``--err``
+---------
 
-Show uncertainties at the end of the fit using the square root of the
-diagonals of the covariance matrix. See :ref:`option-cov`.
+Show the parameter uncertainty at the end of the fit. For :ref:`fit-dream`,
+this is the table of credible intervals from the MCMC sample. For the other
+fitters, the same table comes from points drawn from the covariance matrix
+and weighted by the likelihood, so the credible intervals follow the actual
+likelihood rather than the gaussian approximation. See
+:ref:`option-err-samples` and :ref:`option-cov`.
 
-Note: not currently available.
+
+.. _option-err-samples:
+
+``--err-samples``
+-----------------
+
+*Samples for uncertainty* sets the number of points drawn from the
+covariance matrix to estimate the uncertainty for :ref:`option-err` and
+:ref:`option-export` when the fit has no MCMC sample. The default is 10000.
+Each point needs one evaluation of the model, run in parallel when the fit
+is. Use ``--err-samples=0`` to report the square root of the diagonal of the
+covariance matrix instead.
+
+The points are drawn from a multivariate t distribution with 10 degrees of
+freedom, centered on the best fit and scaled to the covariance matrix of the
+fit, which keeps the result reliable when the posterior is somewhat wider,
+narrower or heavier tailed than the covariance matrix suggests. Each point
+$x$ is weighted by $P(x)/Q(x)$, where $P(x) \propto e^{-\text{nllf}(x)}$ is
+the posterior probability and $Q(x)$ is the probability of drawing $x$.
+
+The report includes the effective sample size, $(\sum w)^2/\sum w^2$ for
+weights $w$. This is close to the number of samples when the covariance
+matrix describes the posterior well, and the uncertainty in the reported
+intervals scales as one over its square root. Bumps warns that the
+uncertainties are unreliable when the effective sample size is less than 10%
+of the samples, in which case use :ref:`fit-dream` instead. It also warns when
+a sampled point is better than the best fit, which means the fit did not reach
+the minimum.
 
 .. _option-cov:
 

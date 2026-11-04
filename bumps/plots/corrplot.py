@@ -34,8 +34,6 @@ class Corr2d(object):
         self.labels = labels
         self.data = data
         self.histogram2d_kw = histogram2d_kw  # e.g. bins=(50,50), range=[(0,1),(0,1)]
-        # Weighted samples (e.g., from importance sampling) pass weights to histogram2d.
-        self.weights = histogram2d_kw.get("weights", None)
         self._hists = {}  # cache for histograms
         self.fig = None
         # for k, v in self.hists.items():
@@ -44,11 +42,7 @@ class Corr2d(object):
         self.default_ranges = [(l, h) for l, h in zip(low, high)]
 
     def R(self):
-        if self.weights is None:
-            return np.corrcoef(self.data)
-        C = np.cov(self.data, aweights=self.weights)
-        d = np.sqrt(np.diag(C))
-        return C / np.outer(d, d)
+        return np.corrcoef(self.data)
 
     def __getitem__(self, indices):
         """

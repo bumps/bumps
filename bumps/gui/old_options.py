@@ -156,7 +156,6 @@ FIT_FIELDS = dict(
     outliers=("Outliers", ChoiceList("none", "iqr", "grubbs", "mahal")),
     starts=("Starts", parse_int),
     jump=("Jump radius", float),
-    nu=("Proposal degrees of freedom", float),
 )
 
 # Make sure all settings are parseable
