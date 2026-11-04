@@ -50,6 +50,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy import log, pi, sqrt
 from numpy.typing import ArrayLike
+from scipy.special import kl_div
 
 from .util import NDArray
 from .parameter import Parameter, ValueProtocol
@@ -534,6 +535,11 @@ class PoissonCurve(Curve):
     is displayed using the approximation that $\sigma_y \approx \sqrt(y)$.
     A zero predicted rate is valid when the corresponding observed count is zero.
 
+    Residuals are signed square roots of the Poisson deviance, positive when
+    the theory exceeds the count. Their squared sum is twice the difference
+    between the nllf and the saturated model (theory equal to each count).
+    Least-squares fitting therefore minimizes the same Poisson likelihood.
+
     Note that the *dy* argument is ignored. It is only present for deserialization
     of the Curve base class.
 
@@ -547,13 +553,25 @@ class PoissonCurve(Curve):
         self._logfacty = logfactorial(y) if y is not None else None
         self._logfactysum = np.sum(self._logfacty)
 
-    ## Assume gaussian residuals for now
-    # def residuals(self):
-    #    # TODO: provide individual probabilities as residuals
-    #    # or perhaps the square roots --- whatever gives a better feel for
-    #    # which points are driving the fit
-    #    theory = self.theory()
-    #    return np.sqrt(self.y * log(theory) - theory - self._logfacty)
+    def residuals(self):
+        theory, counts = np.broadcast_arrays(self.theory(), self.y)
+        deviance = kl_div(counts, theory)
+        # Avoid overflow in count/rate for tiny positive predicted rates.
+        overflow = np.isinf(deviance) & (counts > 0) & (theory > 0) & np.isfinite(counts) & np.isfinite(theory)
+        deviance[overflow] = (
+            counts[overflow] * (log(counts[overflow]) - log(theory[overflow])) - counts[overflow] + theory[overflow]
+        )
+        delta = np.divide(theory - counts, counts, out=np.full_like(deviance, np.inf), where=counts > 0)
+        close = abs(delta) < 1e-2
+        # kl_div cancels near equal rates. Expand delta - log1p(delta)
+        # instead, preserving small costs and the derivative at zero residual.
+        d = delta[close]
+        deviance[close] = (
+            counts[close]
+            * d**2
+            * (0.5 + d * (-1 / 3 + d * (1 / 4 + d * (-1 / 5 + d * (1 / 6 + d * (-1 / 7 + d / 8))))))
+        )
+        return np.sign(theory - counts) * sqrt(2 * deviance)
 
     def nllf(self):
         theory = self.theory()
@@ -601,3 +619,52 @@ def test_poisson_curve_multiple_curves():
 
         flattened = PoissonCurve(lambda x: x, rates.ravel(), counts.ravel())
         np.testing.assert_allclose(value, flattened.nllf())
+
+
+def test_poisson_deviance_residuals():
+    counts = np.array([0, 0, 1, 4, 1, 0])
+    rates = np.array([0.0, 2.0, 1.0, 2.0, 0.0, -1.0])
+    model = PoissonCurve(lambda x: x, rates, counts)
+    expected = [0, 2, 0, -sqrt(8 * log(2) - 4), -np.inf, -np.inf]
+    with np.errstate(divide="raise", invalid="raise"):
+        np.testing.assert_allclose(model.residuals(), expected)
+
+
+def test_poisson_residuals_near_equal_rates():
+    # The leading term is (rate - count)/sqrt(count). Direct subtraction
+    # of log likelihoods loses this cost when the two rates are close.
+    counts = np.array([1e12, 1e12, 1e12])
+    rates = counts + np.array([-100.0, 0.0, 100.0])
+    model = PoissonCurve(lambda x: x, rates, counts)
+    np.testing.assert_allclose(model.residuals(), [-1e-4, 0, 1e-4], rtol=1e-9)
+
+
+def test_poisson_residuals_tiny_positive_rate():
+    model = PoissonCurve(lambda x: x, np.array([1e-320]), np.array([1]))
+    expected = -sqrt(2 * (-log(1e-320) - 1))
+    with np.errstate(divide="raise", invalid="raise", over="raise"):
+        np.testing.assert_allclose(model.residuals(), [expected])
+
+
+def test_poisson_residuals_multiple_curves():
+    counts = np.array([[0, 1, 4], [2, 3, 0]])
+    rates = np.array([[2.0, 1.0, 2.0], [2.0, 4.0, 0.0]])
+    model = PoissonCurve(lambda x: rates, np.arange(3), counts)
+    residuals = model.residuals()
+    flattened = PoissonCurve(lambda x: x, rates.ravel(), counts.ravel())
+    np.testing.assert_array_equal(residuals.ravel(), flattened.residuals())
+    # Difference from the saturated likelihood, with 0*log(0) = 0.
+    saturated = -np.sum(counts[counts > 0] * log(counts[counts > 0]) - counts[counts > 0])
+    saturated += np.sum(logfactorial(counts))
+    np.testing.assert_allclose(np.sum(residuals**2) / 2, model.nllf() - saturated)
+
+
+def test_poisson_lm_fit():
+    from .fitproblem import FitProblem
+    from .fitters import fit
+
+    counts = np.array([0, 1, 4])
+    model = PoissonCurve(lambda x, rate: np.full(x.shape, rate), np.arange(3), counts, rate=2.0)
+    model.rate.range(0.01, 10)
+    result = fit(FitProblem(model), method="lm", steps=1000, ftol=1e-12, xtol=1e-12)
+    np.testing.assert_allclose(result.x, [counts.mean()], rtol=1e-5)
