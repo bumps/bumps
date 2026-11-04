@@ -80,6 +80,7 @@ from .plots.traceplot import plot_trace
 from .plots.convergence_plot import convergence_plot
 from .plots.custom_plot import process_custom_plot, CustomWebviewPlot
 from .plots.corrplot import Corr2d
+from .plots.nested_trace_plot import plot_nested_trace
 
 
 # CRUFT: os.listdrives requires python 3.12 (and only exists on windows)
@@ -1433,6 +1434,28 @@ async def get_parameter_trace_plot(var: int):
     else:
         return None
 
+@register
+async def get_nested_trace_plot():
+    fit_state = state.fitting.fit_state
+    if hasattr(fit_state, 'sample'):
+        import time
+        start_time = time.time()
+        logger.info(f"queueing new nested trace plot... {start_time}")
+        results_dict = {'samples': fit_state['samples'],
+                        'logvol': fit_state['logvol'],
+                        'importance_weights': fit_state.importance_weights(),
+                        'samples_id': fit_state['samples_id'],
+                        }
+        fig = plot_nested_trace(results_dict, 
+                                truths=np.zeros(results_dict['samples'].shape[-1]),
+                                connect=True)
+        logger.info(f"time to render but not serialize... {time.time() - start_time}")
+        dfig = fig.to_dict()
+        end_time = time.time()
+        logger.info(f"time to draw parameter_trace plot: {end_time - start_time}")
+        return to_json_compatible_dict(dfig)
+    else:
+        return None
 
 @register
 async def get_parameters(only_fittable: bool = False):

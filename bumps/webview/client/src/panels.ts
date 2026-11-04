@@ -9,6 +9,7 @@ import LogView from "./components/LogView.vue";
 import ModelInspect from "./components/ModelInspect.vue";
 import ModelUncertaintyView from "./components/ModelUncertaintyView.vue";
 import ParameterTraceView from "./components/ParameterTraceView.vue";
+import NestedTraceView from "./components/NestedTraceView.vue";
 import ParameterView from "./components/ParameterView.vue";
 import SummaryView from "./components/SummaryView.vue";
 import UncertaintyView from "./components/UncertaintyView.vue";
@@ -17,6 +18,9 @@ export type Panel = { title: string; component: any; show?: () => boolean };
 export const show_uncertainty = () => shared_state.uncertainty_available?.available ?? false;
 export const show_custom_plots = () => shared_state.custom_plots_available?.parameter_based ?? false;
 export const show_custom_uncertainty_plots = () => shared_state.custom_plots_available?.uncertainty_based ?? false;
+export const show_trace = () => show_uncertainty() && shared_state.selected_fitter=="dream";
+export const show_nested_trace = () => show_uncertainty() && shared_state.selected_fitter=="nested_sampling";
+
 
 export const panels: Panel[] = [
   { title: "Data", component: DataPanel },
@@ -27,7 +31,8 @@ export const panels: Panel[] = [
   { title: "Model", component: ModelInspect },
   { title: "Parameters", component: ParameterView },
   { title: "Correlations", component: CorrelationView, show: show_uncertainty },
-  { title: "Trace", component: ParameterTraceView, show: show_uncertainty },
+  { title: "Trace", component: ParameterTraceView, show: show_trace },
+  { title: "Trace", component: NestedTraceView, show: show_nested_trace },
   { title: "Model Uncertainty", component: ModelUncertaintyView, show: show_uncertainty },
   { title: "Uncertainty", component: UncertaintyView, show: show_uncertainty },
   { title: "Custom", component: CustomPlot, show: show_custom_plots },
