@@ -295,9 +295,11 @@ def stats(x, weights=None, x_sort_index=None):
         x = x[x_sort_index]
         mean, std = np.mean(x), np.std(x, ddof=1)
     else:
-        mean = np.mean(x * weights) / np.sum(weights)
-        # TODO: this is biased by selection of mean; need an unbiased formula
-        var = np.sum((weights * (x - mean)) ** 2) / np.sum(weights)
+        # Unbiased variance for reliability weights: divide by V1 - V2/V1,
+        # which reduces to N-1 (i.e., ddof=1) when all weights are equal.
+        w_sum = np.sum(weights)
+        mean = np.sum(weights * x) / w_sum
+        var = np.sum(weights * (x - mean) ** 2) / (w_sum - np.sum(weights**2) / w_sum)
         std = np.sqrt(var)
 
     return mean, std
@@ -339,13 +341,54 @@ def credible_interval(x, ci, weights=None, x_sort_index=None):
         result = np.interp(target, cdf, x[x_sort_index])
     else:
         x, weights = x[x_sort_index], weights[x_sort_index]
-        # convert weights to cdf
-        cdf = np.cumsum(weights)
-        cdf /= cdf[-1]
-        cdf -= 0.5 * cdf[0]
-        # cdf *= n/(cdf[-1]*(n+1))
+        # Zero-weight points carry no mass, so don't use them as interpolation nodes.
+        keep = weights > 0
+        x, weights = x[keep], weights[keep]
+        # Place each point at the midpoint of its own mass in the cdf. With
+        # equal weights this is (i - 1/2)/n, matching the unweighted case.
+        cdf = (np.cumsum(weights) - 0.5 * weights) / np.sum(weights)
         result = np.interp(target, cdf, x)
     return result if ci.shape else result[0]
+
+
+def test_weighted_stats():
+    rng = np.random.default_rng(1)
+    ci = [0.95, ONE_SIGMA, 0.0]
+    x = rng.normal(3.0, 2.0, 10000)
+
+    # Constant weights of any scale match the unweighted results.
+    for w in (np.ones_like(x), np.full_like(x, 7.0)):
+        assert np.allclose(stats(x, weights=w), stats(x))
+        assert np.allclose(credible_interval(x, ci, weights=w), credible_interval(x, ci))
+
+    # Zero-weight points are ignored.
+    x_ext = np.hstack((x, [-100.0, 100.0]))
+    w_ext = np.hstack((np.ones_like(x), [0.0, 0.0]))
+    assert np.allclose(stats(x_ext, weights=w_ext), stats(x))
+    assert np.allclose(credible_interval(x_ext, ci, weights=w_ext), credible_interval(x, ci))
+
+    # Each point sits at the middle of its own weight in the cdf, as in the
+    # unweighted case, so a heavy point at x=0 pulls the median toward it.
+    x_heavy = np.array([0.0, 1.0, 2.0, 3.0])
+    w_heavy = np.array([5.0, 1.0, 1.0, 1.0])
+    assert np.allclose(credible_interval(x_heavy, 0.0, weights=w_heavy), [0.5, 0.5])
+
+    # With few points, a zero-weight sample at the edge must not be used as an
+    # interpolation endpoint, which would stretch the interval toward it.
+    x_edge = np.array([-10.0, 0.0, 1.0, 2.0, 3.0, 4.0])
+    w_edge = np.array([0.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+    assert np.allclose(credible_interval(x_edge, 0.95, weights=w_edge), [0.0, 4.0])
+
+    # Importance sampling: draw from N(0, 2^2) and reweight to N(1, 1).
+    z = rng.normal(0.0, 2.0, 200000)
+    log_w = -0.5 * (z - 1.0) ** 2 + 0.5 * (z / 2.0) ** 2
+    w = np.exp(log_w - log_w.max())
+    mean, std = stats(z, weights=w)
+    assert abs(mean - 1.0) < 0.02 and abs(std - 1.0) < 0.02
+    p95, p68, p0 = credible_interval(z, ci, weights=w)
+    assert np.allclose(p68, [0.0, 2.0], atol=0.03)
+    assert np.allclose(p95, [1.0 - 1.96, 1.0 + 1.96], atol=0.05)
+    assert abs(p0[0] - 1.0) < 0.02
 
 
 def shortest_credible_interval(x, ci=0.95, weights=None):
