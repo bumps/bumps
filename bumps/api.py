@@ -1435,6 +1435,7 @@ async def get_parameter_trace_plot(var: int):
 @register
 async def get_nested_trace_plot():
     fit_state = state.fitting.fit_state
+    # TODO: Updated this when https://github.com/bumps/bumps/issues/482 is resolved.
     if hasattr(fit_state, 'sample'):
         import time
         start_time = time.time()
