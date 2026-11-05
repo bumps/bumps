@@ -18,9 +18,8 @@ export type Panel = { title: string; component: any; show?: () => boolean };
 export const show_uncertainty = () => shared_state.uncertainty_available?.available ?? false;
 export const show_custom_plots = () => shared_state.custom_plots_available?.parameter_based ?? false;
 export const show_custom_uncertainty_plots = () => shared_state.custom_plots_available?.uncertainty_based ?? false;
-export const show_trace = () => show_uncertainty() && shared_state.selected_fitter=="dream";
-export const show_nested_trace = () => show_uncertainty() && shared_state.selected_fitter=="nested_sampling";
-
+export const show_trace = () => show_uncertainty() && shared_state.selected_fitter === "dream";
+export const show_nested_trace = () => show_uncertainty() && shared_state.selected_fitter === "nested_sampling";
 
 export const panels: Panel[] = [
   { title: "Data", component: DataPanel },

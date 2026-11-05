@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref, shallowRef } from "vue";
+import { ref, shallowRef } from "vue";
 import * as Plotly from "plotly.js/lib/core";
-import { Socket } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
 import { configWithSVGDownloadButton } from "../plotly_extras";
 import { setupDrawLoop } from "../setupDrawLoop";
@@ -15,7 +15,7 @@ const props = defineProps<{
   socket: Socket;
 }>();
 
-const { draw_requested } = setupDrawLoop("updated_uncertainty", props.socket, fetch_and_draw);
+setupDrawLoop("updated_uncertainty", props.socket, fetch_and_draw);
 
 async function fetch_and_draw() {
   const payload = (await props.socket.asyncEmit("get_nested_trace_plot")) as Plotly.PlotlyDataLayoutConfig;
