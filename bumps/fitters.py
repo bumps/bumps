@@ -1122,15 +1122,16 @@ class NestedSamplerFit(FitBase):
        
         def log_likelihood(x):
             """
-            Calculate the log-likelihood of the model
+            Calculate the log-likelihood of the model.
             """            
             # Note: this is only using nllf from experiment;
             # parameter_nllf is handled implicitly by prior_transform
-            # and constraints_nllf is ignored.
+            # and constraints_nllf is added to the final best value at the end 
             self.problem.setp(x)
             return -self.problem.model_nllf()
 
         def prior_transform(u):
+            """Transform the parameter space to the unit hypercube."""
             return [parameter.prior.put01(u[i]) for i, parameter in enumerate(self.parameters)]
 
         self.nested_sampler = DynamicNestedSampler(log_likelihood, prior_transform, ndim)
@@ -1142,33 +1143,79 @@ class NestedSamplerFit(FitBase):
         from dynesty.dynamicsampler import stopping_function, weight_function
 
         niter = 0
+        aborted = monitors.stopping()
+
         # baseline initial sampling
-        for results in self.nested_sampler.sample_initial():
-            niter += 1
-            self.update(monitors, niter, results)
+        if not aborted:
+            for results in self.nested_sampler.sample_initial():
+                niter += 1
+                self.update(monitors, niter, results)
+                if monitors.stopping():
+                    aborted = True
+                    break
+
+        if niter == 0:
+            # restore starting point as we have no data 
+            x = self.problem.getp()
+            return x, self.problem.nllf(x)
 
         self.results = self.nested_sampler.results
 
         # sample in batches until the stopping criterion is reached
-        while True:
+        while not aborted:
             stop = stopping_function(self.nested_sampler.results)  # evaluate stop
             if not stop:
                 logl_bounds = weight_function(self.nested_sampler.results)  # derive bounds
                 for results in self.nested_sampler.sample_batch(logl_bounds=logl_bounds):
                     niter += 1
                     self.update(monitors, niter, results)
+                    # Check for user abort or fit timeout. The partial batch is
+                    # discarded (it is not combined into the saved run) since its
+                    # weights are only correct once the batch is complete.
+                    if monitors.stopping():
+                        aborted = True
+                        break
+                if aborted:
+                    break
                 self.nested_sampler.combine_runs()  # add new samples to previous results
                 self.results = self.nested_sampler.results
             else:
                 break
 
-        self.results = self.nested_sampler.results
-        # get best sampled point; the log-likelihood array is sorted,
-        # so the best point is the last point in the array
-        fx = -self.results.logl[-1]
-        x = self.results.samples[-1]
+        # Note: on abort self.results holds the samples from the initial run plus
+        # any completed batches, so it is not updated from the sampler here.
+        if not aborted:
+            self.results = self.nested_sampler.results
 
-        return x, fx
+        return self._best_sample()
+
+    def _best_sample(self):
+        """
+        Return the best sampled point and its cost.
+        """
+        # because we sample from the prior distribution, we only use the model likelihood
+        # in the sampler - so we need to re-add the parameter and constraints prior to
+        # get the complete objective function 
+        samples = self.results.samples
+        # the sampling likelihood is -model_nllf. Keep it separate from the
+        # prior so that the prior is not counted twice.
+        model_nllf = -np.asarray(self.results.logl)
+
+        cost = np.empty(len(samples), "d")
+        for k, x in enumerate(samples):
+            self.problem.setp(x)
+            pparameter, bad_priors = self.problem.parameter_nllf()
+            pconstraints, bad_constraints = self.problem.constraints_nllf()
+            failing = bad_priors + bad_constraints
+            # match FitProblem.nllf: the model cost is replaced by the penalty
+            # when the point is infeasible.
+            penalty = self.problem.penalty_nllf if failing else model_nllf[k]
+            cost[k] = pparameter + pconstraints + penalty
+        cost[np.isnan(cost)] = np.inf
+
+        x = samples[np.argmin(cost)]
+        # score the chosen point with the complete objective.
+        return x, self.problem.nllf(x)
 
     def update(self, monitors: MonitorRunner, step: int, results):
         """
