@@ -55,7 +55,7 @@ import time
 from . import errplot
 from . import options as fit_options
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
-from .fitproblem import Fitness, FitProblem, load_problem, load_pars, fitness_chisq_str
+from .fitproblem import Fitness, FitProblem, load_problem, load_pars, fitness_chisq_str, logz_str
 from .fitters import FitDriver, OptimizeResult, FIT_DEFAULT_ID, FIT_ACTIVE_IDS, save_fit_result
 from .logger import logger
 from .mapper import MPMapper
@@ -597,8 +597,9 @@ def export_fit(
     # Handle OptimizeResult or FitResult
     fit_state = getattr(fit, "fit_state", getattr(fit, "state", None))
     with push_mpl_backend("agg"):
-        # Produce model plots
-        problem.plot(figfile=output_pathstr)
+        # Produce model plots, annotated with the log evidence if the fitter
+        # estimated one (OptimizeResult and webview FitResult both carry logz)
+        problem.plot(figfile=output_pathstr, logz=getattr(fit, "logz", None))
 
         # TODO: produce convergence plot and write convergence data
 
@@ -1002,6 +1003,10 @@ async def get_data_plot(model_indices: Optional[List[int]] = None):
 
     # Overall chisq
     overall_chisq_str = fitProblem.chisq_str()
+    # Log evidence from the current fit, for the fitters that estimate it
+    # (nested sampling). Empty for the others, and after the model is edited
+    # since that clears the fit result.
+    evidence_str = logz_str(getattr(state.fitting, "logz", None))
     with fitProblem.push_model(index) as model:
         # # "per model" chisq
         if fitProblem.num_models > 1:
@@ -1011,6 +1016,8 @@ async def get_data_plot(model_indices: Optional[List[int]] = None):
         else:
             text = f"χ² = {overall_chisq_str}"
             title = f"{model.name}"
+        if evidence_str:
+            text = f"{text}; {evidence_str}"
         if hasattr(model, "plotly"):
             return _get_data_plot_plotly(model, title=title, chisq=text)
         elif hasattr(model, "plot"):
