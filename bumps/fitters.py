@@ -1219,6 +1219,7 @@ class NestedSamplerFit(FitBase):
             labels=self.problem.labels(),
             title=self.problem.name,
             best=best,
+            results=results,
         )
         _set_problem_vars(draw, self.problem)
         return draw
