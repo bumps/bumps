@@ -9,25 +9,28 @@ const _tabTriggers = ref<HTMLButtonElement[]>([]);
 const props = defineProps<{
   socket: AsyncSocket;
   panels: { title: string; component: unknown; show?: () => boolean }[];
-  startPanel: number;
+  defaultPanel: number;
   hideTabs?: boolean;
 }>();
 
-const activePanel = ref(props.startPanel);
+// bound to app state so the selection survives this container being recreated
+const activePanel = defineModel<number>("activePanel", { required: true });
 
 function setActive(index: number) {
   activePanel.value = index;
 }
 
 // watch for changes to panel.show() and update the tabs
+// (immediate, since the remembered panel may have been hidden while this container was unmounted)
 watch(
   () => props.panels.map((p) => p.show?.()),
   (newValue) => {
     if (newValue[activePanel.value] === false) {
-      // revert to startPanel if the active panel is hidden
-      activePanel.value = props.startPanel;
+      // revert to defaultPanel if the active panel is hidden
+      activePanel.value = props.defaultPanel;
     }
-  }
+  },
+  { immediate: true }
 );
 </script>
 

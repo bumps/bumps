@@ -2,6 +2,7 @@
 import { computed, ref, toRaw } from "vue";
 import {
   active_layout,
+  activePanels,
   addNotification,
   autoupdate_state,
   cancelNotification,
@@ -11,13 +12,12 @@ import {
   disconnected,
   file_menu_items,
   fileBrowser,
-  type FileBrowserSettings,
   fitOptions,
   LAYOUTS,
   notifications,
   shared_state,
   socket as socket_ref,
-  startPanel,
+  type FileBrowserSettings,
   type FitSetting,
 } from "./app_state";
 import Gear from "./assets/gear.svg?component";
@@ -51,13 +51,14 @@ function setDarkTheme(prefersDark: boolean) {
 prefersDarkMediaQueryList.addEventListener("change", (e) => setDarkTheme(e.matches));
 setDarkTheme(prefersDarkMediaQueryList.matches);
 
-if (props.singlePanel) {
+const singlePanelTitle = props.singlePanel?.toLowerCase();
+if (singlePanelTitle) {
   active_layout.value = "full";
-  const panel_index = props.panels.findIndex(({ title }) => title.toLowerCase() === props?.singlePanel?.toLowerCase());
+  const panel_index = props.panels.findIndex(({ title }) => title.toLowerCase() === singlePanelTitle);
   if (panel_index > -1) {
-    startPanel.value[0] = panel_index;
+    activePanels.value[0] = panel_index;
   } else {
-    console.error(`Panel ${props?.singlePanel} not found`);
+    console.error(`Panel ${props.singlePanel} not found`);
   }
 }
 
@@ -257,6 +258,24 @@ async function quit() {
 
 const model_not_loaded = computed(() => shared_state.model_file == null);
 
+// Panes are rendered from this table (rather than one v-if block per layout) so that
+// switching layouts patches the classes in place and keeps the existing panes alive.
+const LAYOUT_CLASSES: Record<(typeof LAYOUTS)[number], { outer: string; panes: string[] }> = {
+  "left-right": {
+    outer: "row overflow-hidden",
+    panes: ["col d-flex flex-column mh-100 border-end border-success border-3", "col d-flex flex-column mh-100"],
+  },
+  "top-bottom": {
+    outer: "d-flex flex-column",
+    panes: ["d-flex flex-column flex-grow-1 overflow-y-scroll", "d-flex flex-column flex-grow-1"],
+  },
+  full: {
+    outer: "row overflow-hidden",
+    panes: ["col d-flex flex-column mh-100"],
+  },
+};
+const layout = computed(() => LAYOUT_CLASSES[active_layout.value]);
+
 file_menu_items.value = [
   { text: "Load Problem", action: selectOpenFile },
   { text: "Save Parameters", action: saveParameters, disabled: model_not_loaded },
@@ -369,29 +388,14 @@ file_menu_items.value = [
         <ThemeToggle />
       </div>
     </nav>
-    <div v-if="active_layout === 'left-right'" class="flex-grow-1 row overflow-hidden">
-      <div class="col d-flex flex-column mh-100 border-end border-success border-3">
-        <PanelTabContainer :panels="panels" :socket="socket" :start-panel="startPanel[0]" />
-      </div>
-      <div class="col d-flex flex-column mh-100">
-        <PanelTabContainer :panels="panels" :socket="socket" :start-panel="startPanel[1]" />
-      </div>
-    </div>
-    <div v-if="active_layout === 'top-bottom'" class="flex-grow-1 d-flex flex-column">
-      <div class="d-flex flex-column flex-grow-1" style="overflow-y: scroll">
-        <PanelTabContainer :panels="panels" :socket="socket" :start-panel="startPanel[0]" />
-      </div>
-      <div class="d-flex flex-column flex-grow-1">
-        <PanelTabContainer :panels="panels" :socket="socket" :start-panel="startPanel[1]" />
-      </div>
-    </div>
-    <div v-if="active_layout === 'full'" class="flex-grow-1 row overflow-hidden">
-      <div class="col d-flex flex-column mh-100">
+    <div class="flex-grow-1" :class="layout.outer">
+      <div v-for="(paneClass, pane) in layout.panes" :key="pane" :class="paneClass">
         <PanelTabContainer
+          v-model:active-panel="activePanels[pane]"
           :panels="panels"
           :socket="socket"
-          :start-panel="startPanel[0]"
-          :hide-tabs="singlePanel !== null"
+          :default-panel="pane"
+          :hide-tabs="!!singlePanel"
         />
       </div>
     </div>
