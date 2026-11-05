@@ -39,6 +39,9 @@ class BayesDraw:
 
     *portion* is the fraction of the sample to use for statistics and plots,
     taken from the end of the sample.
+
+    *best* is the best *(point, log likelihood)* seen, defaulting to the best
+    point of the sample.
     """
 
     _derived_fn: Optional[Callable[[NDArray], NDArray]] = None
@@ -56,6 +59,7 @@ class BayesDraw:
         labels: Optional[List[str]] = None,
         title: Optional[str] = None,
         portion: float = 1.0,
+        best: Optional[Tuple[NDArray, float]] = None,
     ):
         self._points = points
         self._logp = logp
@@ -63,9 +67,10 @@ class BayesDraw:
         self._labels = labels
         self.title = title
         self.portion = portion
-        best = None if logp is None else argmax(logp)
-        self._best_x = None if best is None else points[best]
-        self._best_logp = -inf if best is None else logp[best]
+        if best is None and logp is not None:
+            k = argmax(logp)
+            best = points[k], logp[k]
+        self._best_x, self._best_logp = best if best is not None else (None, -inf)
 
     @property
     def Nvar(self):
@@ -99,6 +104,16 @@ class BayesDraw:
     def best(self):
         """Return the best point seen and its log likelihood."""
         return self._best_x, self._best_logp
+
+    def stderr(self):
+        """
+        Return half the 68% credible interval of each parameter, which is a
+        more robust measure of spread than the standard deviation when the
+        distribution is not normal.
+        """
+        from .dream.stats import var_stats
+
+        return np.array([(v.p68[1] - v.p68[0]) / 2 for v in var_stats(self.draw())], "d")
 
     @property
     def labels(self):

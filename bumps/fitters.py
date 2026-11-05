@@ -28,6 +28,7 @@ from numpy.typing import NDArray
 
 if TYPE_CHECKING:
     from h5py import Group
+    from bumps.bayes import BayesDraw
     from bumps.dream.state import MCMCDraw
 
 
@@ -912,6 +913,22 @@ def map_labels(labels: list, old_labels: list) -> list:
     return pairs
 
 
+def _set_problem_vars(state: "BayesDraw", problem):
+    """
+    Copy the derived, visible and integer variable settings from *problem*.
+    """
+    # TODO: Serialize derived/visible/integer variable support with fitproblem.
+    # TODO: Use parameter expressions for derived vars rather than a function.
+    # TODO: Allow fixed parameters as part of the derived variable function.
+    derive, labels = getattr(problem, "derive_vars", (None, None))
+    if derive is not None:
+        state.set_derived_vars(derive, labels=labels)
+    if (visible := getattr(problem, "visible_vars", None)) is not None:
+        state.set_visible_vars(visible)
+    if (integer := getattr(problem, "integer_vars", None)) is not None:
+        state.set_integer_vars(integer)
+
+
 class DreamFit(FitBase):
     name = "DREAM"
     id = "dream"
@@ -996,19 +1013,7 @@ class DreamFit(FitBase):
         # self.state.keep_best()
         self.state.title = self.problem.name
 
-        # TODO: Add derived/visible/integer variable support to other optimizers.
-        # TODO: Serialize derived/visible/integer variable support with fitproblem.
-        # TODO: Use parameter expressions for derived vars rather than a function.
-        # TODO: Allow fixed parameters as part of the derived variable function.
-        fn, labels = getattr(self.problem, "derive_vars", (None, None))
-        if fn is not None:
-            self.state.set_derived_vars(fn, labels=labels)
-        visible_vars = getattr(self.problem, "visible_vars", None)
-        if visible_vars is not None:
-            self.state.set_visible_vars(visible_vars)
-        integer_vars = getattr(self.problem, "integer_vars", None)
-        if integer_vars is not None:
-            self.state.set_integer_vars(integer_vars)
+        _set_problem_vars(self.state, self.problem)
 
         x, fx = self.state.best()
 
@@ -1023,15 +1028,7 @@ class DreamFit(FitBase):
         return self.state.entropy(**kw)
 
     def stderr(self):
-        """
-        Approximate standard error as 1/2 the 68% interval fo the sample,
-        which is a more robust measure than the mean of the sample for
-        non-normal distributions.
-        """
-        from .dream.stats import var_stats
-
-        vstats = var_stats(self.state.draw())
-        return np.array([(v.p68[1] - v.p68[0]) / 2 for v in vstats], "d")
+        return self.state.stderr()
 
     # def cov(self):
     #    # Covariance estimate from final 1000 points
@@ -1115,6 +1112,7 @@ class NestedSamplerFit(FitBase):
         self.problem = problem
         self.problem.model_reset()
 
+        self.state = None
         self.results = None
         # best (point, cost) seen by the monitors so far
         self._best_point = None
@@ -1190,7 +1188,47 @@ class NestedSamplerFit(FitBase):
         if not aborted:
             self.results = self.nested_sampler.results
 
-        return self._best_sample()
+        x, fx = self._best_sample()
+        self.state = monitors.history.fit_state = self._build_draw(best=(x, -fx))
+        return x, fx
+
+    def _build_draw(self, best):
+        """
+        Return the posterior sample as a :class:`~bumps.nested_sampling.NestedDraw`.
+
+        *best* is the best *(point, log likelihood)* of the complete objective,
+        which need not be in the sample.
+        """
+        from dynesty.utils import resample_equal
+
+        from .nested_sampling import NestedDraw
+
+        results = self.results
+        # Nested sampling returns unequally weighted points ordered by increasing
+        # likelihood. Resample to equal weight to get the unordered posterior
+        # sample that the plots and statistics expect, keeping each likelihood
+        # with its point.
+        index = resample_equal(
+            np.arange(len(results.logl)),
+            results.importance_weights(),
+            rstate=self.nested_sampler.rstate,
+        )
+        draw = NestedDraw(
+            points=results.samples[index],
+            logp=results.logl[index],
+            labels=self.problem.labels(),
+            title=self.problem.name,
+            best=best,
+        )
+        _set_problem_vars(draw, self.problem)
+        return draw
+
+    def stderr(self):
+        return None if self.state is None else self.state.stderr()
+
+    def plot(self, output_path):
+        if self.state is not None:
+            self.state.show(figfile=output_path)
 
     def _best_sample(self):
         """
@@ -2286,6 +2324,8 @@ def test_fitters(subtests):
             # get tolerance for fitters with exceptions
             value_tol = fitter_tols.get(fitter_name, fit_value_tol)
             assert_allclose(result.x, expected_value, rtol=value_tol)
-            if fitter_name != "dream":
-                # dream error bars vary too much to test
+            if fitter_name not in ("dream", "nested_sampling"):
+                # The samplers take their error bars from the posterior sample
+                # rather than from the curvature at the optimum, so they vary
+                # too much to test.
                 assert_allclose(result.dx, expected_error, rtol=fit_error_tol)
