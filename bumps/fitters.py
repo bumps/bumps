@@ -1092,7 +1092,7 @@ class DreamFit(FitBase):
         steps = options["steps"]
         if steps == 0:  # Steps not specified; using samples instead
             pop, draws = options["pop"], options["samples"]
-            pop_size = int(np.ceil(pop * num_fitparams)) if pop > 0 else int(-pop)
+            pop_size = _population_size(pop, num_fitparams)
             steps = (draws + pop_size - 1) // pop_size
         steps += options["burn"]  # add burn-in steps
         DE_steps = Dream.DE_steps  # DreamFit does not override DE_steps, uses default
@@ -1106,11 +1106,11 @@ class NestedSamplerFit(FitBase):
     name = "Nested Sampling"
     id = "ns"
     settings = [("steps", 20000),
-                ("nlive", 500),
+                ("pop", 100),
                 ("dlogz", 0.01),
                 ("pfrac", 0.0),
-                ("bound", "multi"),
-                ("sample", "auto")]
+                ("bound_method", "multi"),
+                ("sample_method", "auto")]
 
     def __init__(self, problem):    
         self.problem = problem
@@ -1151,15 +1151,16 @@ class NestedSamplerFit(FitBase):
         # arguments for stopping criteria 
         stop_args = {"pfrac": options["pfrac"], "evid_thresh": options["dlogz"]}
 
-        # nlive is only needed by the constructor
+        # the number of live points is only needed by the constructor
         ndim = len(self.parameters)
+        nlive = _population_size(options["pop"], ndim)
         self.nested_sampler = DynamicNestedSampler(
             self.log_likelihood,
             self.prior_transform,
             ndim,
-            nlive=options["nlive"],
-            bound=options["bound"],
-            sample=options["sample"],
+            nlive=nlive,
+            bound=options["bound_method"],
+            sample=options["sample_method"],
         )
 
         niter = 0
@@ -1270,18 +1271,17 @@ class NestedSamplerFit(FitBase):
         return np.asarray(sampler.live_v), -np.asarray(sampler.live_logl)
 
     @classmethod
-    def max_steps(
-        cls, problem: Optional["bumps.fitproblem.FitProblem"] = None, options: Optional[Dict[str, Any]] = None
-    ) -> int:
+    def max_steps(cls, problem: "bumps.fitproblem.FitProblem", options: Optional[Dict[str, Any]] = None) -> int:
         """
         Return the maximum number of steps the fitter will take based on
         the given options.
         """
         options = _fill_defaults(options, cls.settings)
+        nlive = _population_size(options["pop"], len(problem.getp()))
         # steps only bounds the sampling iterations. Once it is reached the
-        # sampler wraps up by yielding the remaining nlive live points one at a
+        # sampler wraps up by yielding the remaining live points one at a
         # time, followed by a final iteration
-        return options["steps"] + options["nlive"] + 1
+        return options["steps"] + nlive + 1
 
 
 class Resampler(FitBase):
@@ -1617,6 +1617,15 @@ def _fill_defaults(options: Optional[Dict[str, Any]], settings: List[Tuple[str, 
     if options is not None:
         result.update(options)
     return result
+
+
+def _population_size(pop: float, num_fitparams: int) -> int:
+    """
+    Returns the population size for the *pop* option: *pop* times the number of
+    fitted parameters, or -*pop* independent of the number of parameters if
+    *pop* is negative.
+    """
+    return int(np.ceil(pop * num_fitparams)) if pop > 0 else int(-pop)
 
 
 FITTERS: list[FitBase] = []

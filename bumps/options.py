@@ -386,7 +386,6 @@ Setting(
 )
 
 # Nested sampling
-Setting("nlive", "Live points", int, "Number of live points maintained by the sampler.")
 Setting("dlogz", "Evidence tolerance", float, "Stop when the estimated remaining log-evidence is below dlogz.")
 Setting(
     "pfrac",
@@ -397,14 +396,14 @@ Setting(
     evidence. A pfrac of 1 allocates all samples to resolving the posterior, and a
     pfrac of 0 allocates them all to narrowing the evidence to within dlogz.""",
 )
-Setting("bound", "Bounding method", list("none single multi balls cubes".split()),
+Setting("bound_method", "Bounding method", list("none single multi balls cubes".split()),
         "How likelihood contours of live points should be bounded.\n"
         "  none: sample from the entire unit hypercube.\n"
         "  single: use a single bounding ellipsoid (known as 'ellipsoidal nested sampling').\n"
         "  multi: use multiple bounding ellipsoids (known as 'multinest').\n"
         "  balls: use overlapping balls centred on each point.\n"
         "  cubes: use overlapping cubes centred on each point.")
-Setting("sample", "Sampling method", list("auto unif rwalk slice rslice".split()),
+Setting("sample_method", "Sampling method", list("auto unif rwalk slice rslice".split()),
         "How new live points should be chosen.\n"
         "  auto: automatically choose based on problem dimensions.\n"
         "  unif: uniform sampling on the provided bounds.\n"

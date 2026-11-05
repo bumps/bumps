@@ -156,11 +156,10 @@ FIT_FIELDS = dict(
     outliers=("Outliers", ChoiceList("none", "iqr", "grubbs", "mahal")),
     starts=("Starts", parse_int),
     jump=("Jump radius", float),
-    nlive=("Live points", parse_int),
     dlogz=("Evidence tolerance", float),
     pfrac=("Posterior/evidence weight", float),
-    bound=("Bounding method", ChoiceList("none", "single", "multi", "balls", "cubes")),
-    sample=("Sampling method", ChoiceList("auto", "unif", "rwalk", "slice", "rslice")),
+    bound_method=("Bounding method", ChoiceList("none", "single", "multi", "balls", "cubes")),
+    sample_method=("Sampling method", ChoiceList("auto", "unif", "rwalk", "slice", "rslice")),
 )
 
 # Make sure all settings are parseable
