@@ -31,7 +31,8 @@ export const disconnected = ref(false);
 export const fitOptions = ref<ModalDialog>();
 export const fileBrowser = ref<ModalDialog>();
 export const active_layout = ref<(typeof LAYOUTS)[number]>("left-right");
-export const startPanel = ref<[number, number]>([0, 1]);
+// selected tab in each pane, kept here so it survives layout changes
+export const activePanels = ref<[number, number]>([0, 1]);
 export const default_fitter_settings = shallowRef<{ [fit_name: string]: FitSetting }>({});
 export const default_fitter = "amoeba";
 export const notifications = ref<{ title: string; content: string; id: string; spinner: boolean }[]>([]);
