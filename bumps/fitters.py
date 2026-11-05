@@ -1116,7 +1116,10 @@ class NestedSamplerFit(FitBase):
         self.problem.model_reset()
 
         self.results = None
-        
+        # best (point, cost) seen by the monitors so far
+        self._best_point = None
+        self._best_value = np.inf
+
         self.parameters = self.problem.parameters
         ndim = len(self.parameters)
        
@@ -1147,9 +1150,9 @@ class NestedSamplerFit(FitBase):
 
         # baseline initial sampling
         if not aborted:
-            for results in self.nested_sampler.sample_initial():
+            for _ in self.nested_sampler.sample_initial():
                 niter += 1
-                self.update(monitors, niter, results)
+                self.update(monitors, niter)
                 if monitors.stopping():
                     aborted = True
                     break
@@ -1166,9 +1169,9 @@ class NestedSamplerFit(FitBase):
             stop = stopping_function(self.nested_sampler.results)  # evaluate stop
             if not stop:
                 logl_bounds = weight_function(self.nested_sampler.results)  # derive bounds
-                for results in self.nested_sampler.sample_batch(logl_bounds=logl_bounds):
+                for _ in self.nested_sampler.sample_batch(logl_bounds=logl_bounds):
                     niter += 1
-                    self.update(monitors, niter, results)
+                    self.update(monitors, niter)
                     # Check for user abort or fit timeout. The partial batch is
                     # discarded (it is not combined into the saved run) since its
                     # weights are only correct once the batch is complete.
@@ -1217,15 +1220,26 @@ class NestedSamplerFit(FitBase):
         # score the chosen point with the complete objective.
         return x, self.problem.nllf(x)
 
-    def update(self, monitors: MonitorRunner, step: int, results):
+    def update(self, monitors: MonitorRunner, step: int):
         """
         Send one iteration of the sampler to the monitors.
+
+        The reported point is the best point seen so far rather than the
+        worst live point that the sampler just discarded.
         """
         population_points, population_values = self._live_points()
+        # The live points are all better than the points already removed from
+        # the sampler, so the best point of the run is among them. A batch only
+        # explores a slice of the likelihood though, so keep the best seen over
+        # all the batches rather than just the best of the current live set.
+        k = np.argmin(population_values)
+        if self._best_point is None or population_values[k] < self._best_value:
+            self._best_point = np.array(population_points[k], "d")
+            self._best_value = population_values[k]
         monitors.update(
             step=step,
-            point=results.vstar,
-            value=-results.loglstar,
+            point=self._best_point,
+            value=self._best_value,
             population_points=population_points,
             population_values=population_values,
         )
