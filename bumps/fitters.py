@@ -140,7 +140,7 @@ class MonitorRunner(object):
 
     def __init__(self, monitors: List[monitor.Monitor], problem, abort_test=None, max_time=0.0):
         self.monitors = monitors
-        self.history = History(time=1, step=1, point=1, value=1, population_points=1, population_values=1)
+        self.history = History(time=1, step=1, point=1, value=1, population_points=1, population_values=1, logz=1)
         # Pre-populate history.time so we can call stopping() before the first update.
         self.history.update(time=0.0)
         for M in self.monitors:
@@ -156,9 +156,10 @@ class MonitorRunner(object):
         value: float,
         population_points: Optional[NDArray] = None,
         population_values: Optional[NDArray] = None,
+        logz: Optional[float] = None,
     ):
         # Note: DEFit doesn't use MonitorRunner for config/update
-        self.history.update(
+        updates = dict(
             time=perf_counter() - self._start,
             step=step,
             point=point,
@@ -166,6 +167,10 @@ class MonitorRunner(object):
             population_points=population_points,
             population_values=population_values,
         )
+        if logz is not None:
+            # Leave the trace untouched for fitters that don't report evidence.
+            updates["logz"] = logz
+        self.history.update(**updates)
         for M in self.monitors:
             M(self.history)
 
@@ -1126,6 +1131,8 @@ class NestedSamplerFit(FitBase):
         # best (point, cost) seen by the monitors so far
         self._best_point = None
         self._best_value = np.inf
+        # Most recent log evidence estimate, carried between batches (see update()).
+        self._logz = None
 
         self.parameters = self.problem.parameters
        
@@ -1178,9 +1185,9 @@ class NestedSamplerFit(FitBase):
 
         # baseline initial sampling
         if not aborted:
-            for _ in self.nested_sampler.sample_initial(dlogz=options["dlogz"], maxiter=steps):
+            for results in self.nested_sampler.sample_initial(dlogz=options["dlogz"], maxiter=steps):
                 niter += 1
-                self.update(monitors, niter)
+                self.update(monitors, niter, results)
                 if monitors.stopping():
                     aborted = True
                     break
@@ -1191,6 +1198,7 @@ class NestedSamplerFit(FitBase):
             return x, self.problem.nllf(x)
 
         self.results = self.nested_sampler.results
+        self._logz = float(self.results.logz[-1])
 
         # sample in batches until the stopping criterion is reached
         # maxiter is per call, so we need to remove iters as we run
@@ -1198,9 +1206,9 @@ class NestedSamplerFit(FitBase):
             if stopping_function(self.nested_sampler.results, args=stop_args):  # evaluate stop
                 break
             logl_bounds = weight_function(self.nested_sampler.results)  # derive bounds
-            for _ in self.nested_sampler.sample_batch(logl_bounds=logl_bounds, maxiter=steps - niter):
+            for results in self.nested_sampler.sample_batch(logl_bounds=logl_bounds, maxiter=steps - niter):
                 niter += 1
-                self.update(monitors, niter)
+                self.update(monitors, niter, results)
                 # Check for user abort or fit timeout. The partial batch is
                 # discarded (it is not combined into the saved run) since its
                 # weights are only correct once the batch is complete.
@@ -1211,6 +1219,7 @@ class NestedSamplerFit(FitBase):
                 break
             self.nested_sampler.combine_runs()  # add new samples to previous results
             self.results = self.nested_sampler.results
+            self._logz = float(self.results.logz[-1])
 
         # Note: on abort self.results holds the samples from the initial run plus
         # any completed batches, so it is not updated from the sampler here.
@@ -1247,12 +1256,13 @@ class NestedSamplerFit(FitBase):
         # score the chosen point with the complete objective.
         return x, self.problem.nllf(x)
 
-    def update(self, monitors: MonitorRunner, step: int):
+    def update(self, monitors: MonitorRunner, step: int, results):
         """
         Send one iteration of the sampler to the monitors.
 
         The reported point is the best point seen so far rather than the
-        worst live point that the sampler just discarded.
+        worst live point that the sampler just discarded. *results* is the
+        sampler's result for this iteration.
         """
         population_points, population_values = self._live_points()
         # The live points are all better than the points already removed from
@@ -1263,12 +1273,17 @@ class NestedSamplerFit(FitBase):
         if self._best_point is None or population_values[k] < self._best_value:
             self._best_point = np.array(population_points[k], "d")
             self._best_value = population_values[k]
+        # Batch iterations yield an IteratorResultShort with no logz: the evidence
+        # is only well defined again once the batch is combined, so report the
+        # estimate from the last combined run until then.
+        logz = getattr(results, "logz", self._logz)
         monitors.update(
             step=step,
             point=self._best_point,
             value=self._best_value,
             population_points=population_points,
             population_values=population_values,
+            logz=float(logz),
         )
 
     def _live_points(self):
@@ -2000,6 +2015,7 @@ def _build_fit_result(problem, webview_fit):
         # webview FitResults
         state=fit_state,
         convergence=webview_fit.convergence,
+        logz=getattr(webview_fit, "logz", None),
         method=webview_fit.method,
         options=webview_fit.options,
     )
@@ -2007,10 +2023,10 @@ def _build_fit_result(problem, webview_fit):
 
 
 # OptimizeResult entries excluded from the exported fit results. The fitter
-# state is not JSON serializable and the convergence history belongs with the
-# plottable outputs rather than the fit summary; both are available in the
-# session file.
-_FIT_RESULT_EXCLUDE_FIELDS = ("state", "convergence")
+# state is not JSON serializable and the convergence and log evidence histories
+# belong with the plottable outputs rather than the fit summary; all are
+# available in the session file.
+_FIT_RESULT_EXCLUDE_FIELDS = ("state", "convergence", "logz")
 
 
 def fit_result_summary(results: OptimizeResult) -> dict:
@@ -2196,6 +2212,7 @@ def fit(
     dof = problem.dof
     fit_state = driver.fitter.state
     steps = driver.monitor_runner.history.step[0]
+    logz = np.array(convergence.logz, "d") if convergence.logz else None
     convergence = np.array(convergence.quantiles)
     # Note: OptimizeResult is a dict with dot accessor and a pretty printer.
     # Keys are by convention:
@@ -2224,6 +2241,7 @@ def fit(
         # webview FitResults
         state=fit_state,
         convergence=convergence,
+        logz=logz,
         method=method,
         options=options,
     )
@@ -2281,6 +2299,7 @@ def save_fit(
         method=fit.method,
         options=fit.options,
         convergence=fit.convergence,
+        logz=fit.get("logz"),
         fit_state=fit.state,
     )
     # TODO: move the label gnerator into a function so it is the same for simple fit as for webview

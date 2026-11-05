@@ -3,6 +3,7 @@ import numpy as np
 
 TRIM_COLOR = "orange"
 BURN_COLOR = "red"
+LOGZ_COLOR = "purple"
 
 
 def convergence_plot(
@@ -12,6 +13,7 @@ def convergence_plot(
     trim_index: Optional[int] = None,
     burn_index: Optional[int] = None,
     max_points: Optional[int] = None,
+    logz: Optional[np.ndarray] = None,
 ) -> dict:
     """
     Generate a convergence plot from the convergence data.
@@ -21,6 +23,17 @@ def convergence_plot(
         and the remaining columns contain the population values.
 
         dof: Degrees of freedom for normalization.
+
+        cutoff: Fraction of the leading steps to drop from the plot.
+
+        trim_index: Step at which the usable samples start, or None for no marker.
+
+        burn_index: Step at which burn-in ends, or None for no marker.
+
+        max_points: Maximum number of points to draw per trace.
+
+        logz: Running estimate of the log evidence, one value per step of
+        *convergence*, or None to omit it.
 
     Returns:
         A dictionary suitable for JSON serialization containing the plot data and layout.
@@ -38,6 +51,9 @@ def convergence_plot(
     x_out = x[tail::step]
     best_out = best[tail::step]
     pop_out = pop[tail::step, :]
+    # logz starts at step 1 like the rest, so plotly pairs it with x_out correctly
+    # even if the two histories differ in length by a step.
+    logz_out = None if logz is None else np.asarray(logz, "d")[tail::step]
 
     # print(f"Convergence plot: {ni} steps, {npop} population, {nout} output, step={step}")
     traces = []
@@ -167,6 +183,19 @@ def convergence_plot(
             mode="lines",
         )
     )
+    if logz is not None:
+        traces.append(
+            dict(
+                type="scattergl",
+                x=x_out,
+                y=logz_out,
+                name="log <i>Z</i>",
+                line=dict(color=LOGZ_COLOR, width=1),
+                mode="lines",
+                yaxis="y2",
+                hovertemplate=hovertemplate.format(label="log Z"),
+            )
+        )
     layout.update(
         dict(
             template="simple_white",
@@ -192,6 +221,23 @@ def convergence_plot(
             )
         )
     )
+    if logz is not None:
+        # log Z does not share units with the normalized chisq, so it needs its own
+        # scale. Tint the axis to match the trace so it is clear which is which.
+        layout.update(
+            dict(
+                yaxis2=dict(
+                    title={"text": "log <i>Z</i>", "font": {"color": LOGZ_COLOR}},
+                    tickfont={"color": LOGZ_COLOR},
+                    linecolor=LOGZ_COLOR,
+                    overlaying="y",
+                    side="right",
+                    showline=True,
+                    showgrid=False,
+                    zeroline=False,
+                )
+            )
+        )
     return {
         "data": traces,
         "layout": layout,
