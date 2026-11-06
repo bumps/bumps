@@ -1089,7 +1089,7 @@ class DreamFit(FitBase):
         steps = options["steps"]
         if steps == 0:  # Steps not specified; using samples instead
             pop, draws = options["pop"], options["samples"]
-            pop_size = int(np.ceil(pop * num_fitparams)) if pop > 0 else int(-pop)
+            pop_size = _population_size(pop, num_fitparams)
             steps = (draws + pop_size - 1) // pop_size
         steps += options["burn"]  # add burn-in steps
         DE_steps = Dream.DE_steps  # DreamFit does not override DE_steps, uses default
@@ -1099,16 +1099,23 @@ class DreamFit(FitBase):
 class NestedSamplerFit(FitBase):
     """
     A nested sampler fitter.
+
+    The *pop* option sets the number of live points. In its relative form it is
+    limited below by :attr:`MIN_POP`; a negative *pop* is used as given.
     """
     name = "Nested Sampling"
     id = "ns"
-    settings = [
-            # TODO: https://github.com/bumps/bumps/issues/480
-            ]
+    # lower bound for relative population so we get decent posteriors on small problems
+    MIN_POP = 500
+    settings = [("steps", 20000),
+                ("pop", 100),
+                ("dlogz", 0.01),
+                ("pfrac", 0.0),
+                ("n_effective", 10000),
+                ("bound_method", "multi"),
+                ("sample_method", "auto")]
 
     def __init__(self, problem):
-        from dynesty import DynamicNestedSampler
-        
         self.problem = problem
         self.problem.model_reset()
 
@@ -1119,36 +1126,57 @@ class NestedSamplerFit(FitBase):
         self._best_value = np.inf
 
         self.parameters = self.problem.parameters
-        ndim = len(self.parameters)
-       
-        def log_likelihood(x):
-            """
-            Calculate the log-likelihood of the model.
-            """            
-            # Note: this is only using nllf from experiment;
-            # parameter_nllf is handled implicitly by prior_transform
-            # and constraints_nllf is added to the final best value at the end 
-            self.problem.setp(x)
-            return -self.problem.model_nllf()
 
-        def prior_transform(u):
-            """Transform the parameter space to the unit hypercube."""
-            return [parameter.prior.put01(u[i]) for i, parameter in enumerate(self.parameters)]
+        self.nested_sampler = None
 
-        self.nested_sampler = DynamicNestedSampler(log_likelihood, prior_transform, ndim)
+    def log_likelihood(self, x):
+        """
+        Calculate the log-likelihood of the model.
+        """
+        # Note: this is only using nllf from experiment;
+        # parameter_nllf is handled implicitly by prior_transform
+        # and constraints_nllf is added to the final best value at the end
+        self.problem.setp(x)
+        return -self.problem.model_nllf()
+
+    def prior_transform(self, u):
+        """Transform the parameter space to the unit hypercube."""
+        return [parameter.prior.put01(u[i]) for i, parameter in enumerate(self.parameters)]
 
     def solve(self, monitors: MonitorRunner, mapper=None, **options):
         """
         Fit the problem using nested sampling.
         """
+        from dynesty import DynamicNestedSampler
         from dynesty.dynamicsampler import stopping_function, weight_function
+
+        options = _fill_defaults(options, self.settings)
+        steps = options["steps"]
+        # arguments for stopping criteria 
+        stop_args = {
+            "pfrac": options["pfrac"],
+            "evid_thresh": options["dlogz"],
+            "target_n_effective": options["n_effective"],
+        }
+
+        # the number of live points is only needed by the constructor
+        ndim = len(self.parameters)
+        nlive = self._nlive(options, ndim)
+        self.nested_sampler = DynamicNestedSampler(
+            self.log_likelihood,
+            self.prior_transform,
+            ndim,
+            nlive=nlive,
+            bound=options["bound_method"],
+            sample=options["sample_method"],
+        )
 
         niter = 0
         aborted = monitors.stopping()
 
         # baseline initial sampling
         if not aborted:
-            for _ in self.nested_sampler.sample_initial():
+            for _ in self.nested_sampler.sample_initial(dlogz=options["dlogz"], maxiter=steps):
                 niter += 1
                 self.update(monitors, niter)
                 if monitors.stopping():
@@ -1156,32 +1184,31 @@ class NestedSamplerFit(FitBase):
                     break
 
         if niter == 0:
-            # restore starting point as we have no data 
+            # restore starting point as we have no data
             x = self.problem.getp()
             return x, self.problem.nllf(x)
 
         self.results = self.nested_sampler.results
 
         # sample in batches until the stopping criterion is reached
-        while not aborted:
-            stop = stopping_function(self.nested_sampler.results)  # evaluate stop
-            if not stop:
-                logl_bounds = weight_function(self.nested_sampler.results)  # derive bounds
-                for _ in self.nested_sampler.sample_batch(logl_bounds=logl_bounds):
-                    niter += 1
-                    self.update(monitors, niter)
-                    # Check for user abort or fit timeout. The partial batch is
-                    # discarded (it is not combined into the saved run) since its
-                    # weights are only correct once the batch is complete.
-                    if monitors.stopping():
-                        aborted = True
-                        break
-                if aborted:
-                    break
-                self.nested_sampler.combine_runs()  # add new samples to previous results
-                self.results = self.nested_sampler.results
-            else:
+        # maxiter is per call, so we need to remove iters as we run
+        while not aborted and niter < steps:
+            if stopping_function(self.nested_sampler.results, args=stop_args):  # evaluate stop
                 break
+            logl_bounds = weight_function(self.nested_sampler.results)  # derive bounds
+            for _ in self.nested_sampler.sample_batch(logl_bounds=logl_bounds, maxiter=steps - niter):
+                niter += 1
+                self.update(monitors, niter)
+                # Check for user abort or fit timeout. The partial batch is
+                # discarded (it is not combined into the saved run) since its
+                # weights are only correct once the batch is complete.
+                if monitors.stopping():
+                    aborted = True
+                    break
+            if aborted:
+                break
+            self.nested_sampler.combine_runs()  # add new samples to previous results
+            self.results = self.nested_sampler.results
 
         # Note: on abort self.results holds the samples from the initial run plus
         # any completed batches, so it is not updated from the sampler here.
@@ -1292,6 +1319,29 @@ class NestedSamplerFit(FitBase):
             sampler = self.nested_sampler.sampler
         return np.asarray(sampler.live_v), -np.asarray(sampler.live_logl)
 
+    @classmethod
+    def _nlive(cls, options: Dict[str, Any], num_fitparams: int) -> int:
+        """
+        Return the number of live points for the given options, which is the
+        population size for *pop*, with the relative form limited below by
+        :attr:`MIN_POP`.
+        """
+        nlive = _population_size(options["pop"], num_fitparams)
+        # negative pop is used to mean 'absolute pop rather than relative'
+        return max(nlive, cls.MIN_POP) if options["pop"] > 0 else nlive
+
+    @classmethod
+    def max_steps(cls, problem: "bumps.fitproblem.FitProblem", options: Optional[Dict[str, Any]] = None) -> int:
+        """
+        Return the maximum number of steps the fitter will take based on
+        the given options.
+        """
+        options = _fill_defaults(options, cls.settings)
+        nlive = cls._nlive(options, len(problem.getp()))
+        # steps only bounds the sampling iterations. Once it is reached the
+        # sampler wraps up by yielding the remaining live points one at a
+        # time, followed by a final iteration
+        return options["steps"] + nlive + 1
 
 class Resampler(FitBase):
     # TODO: why isn't cli.resynth using this?
@@ -1626,6 +1676,15 @@ def _fill_defaults(options: Optional[Dict[str, Any]], settings: List[Tuple[str, 
     if options is not None:
         result.update(options)
     return result
+
+
+def _population_size(pop: float, num_fitparams: int) -> int:
+    """
+    Returns the population size for the *pop* option: *pop* times the number of
+    fitted parameters, or -*pop* independent of the number of parameters if
+    *pop* is negative.
+    """
+    return int(np.ceil(pop * num_fitparams)) if pop > 0 else int(-pop)
 
 
 FITTERS: list[FitBase] = []
