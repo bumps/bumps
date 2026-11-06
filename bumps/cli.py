@@ -80,6 +80,7 @@ PREFERRED_PORT = 5148  # "SLAB"
 
 # TODO: try datargs to build a parser from the typed dataclass
 
+gil_disabled = not (getattr(sys, "_is_gil_enabled", lambda: True)())
 
 @dataclass
 class BumpsOptions:
@@ -135,7 +136,7 @@ class BumpsOptions:
     trace: bool = False
     loglevel: str = "warn"
     parallel: int = 0
-    threads: bool = False
+    threads: bool = gil_disabled
     mpi: Optional[bool] = None
 
     # Webserver controls.
@@ -463,9 +464,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     misc.add_argument(
         "--threads",
-        action="store_true",
-        help=argparse.SUPPRESS,
-        # help="run fit using multithreading for parallelism",
+        action=argparse.BooleanOptionalAction,
+        default=BumpsOptions.threads,
+        help="Enable multithreaded parallelism (Defaults to True on free-threaded Python. Use --no-threads to disable)"
     )
     misc.add_argument(
         "--mpi",
