@@ -447,13 +447,44 @@ Output Controls
 
 .. _option-err:
 
-```--err``
-----------
+``--err``
+---------
 
-Show uncertainties at the end of the fit using the square root of the
-diagonals of the covariance matrix. See :ref:`option-cov`.
+Show the parameter uncertainty at the end of the fit. For :ref:`fit-dream`,
+this is the table of credible intervals from the MCMC sample. For the other
+fitters, the same table comes from points drawn from the covariance matrix
+and weighted by the likelihood, so the credible intervals follow the actual
+likelihood rather than the gaussian approximation. See
+:ref:`option-err-samples` and :ref:`option-cov`.
 
-Note: not currently available.
+
+.. _option-err-samples:
+
+``--err-samples``
+-----------------
+
+*Samples for uncertainty* sets the number of points drawn from the
+covariance matrix to estimate the uncertainty for :ref:`option-err` and
+:ref:`option-export` when the fit has no MCMC sample. The default is 10000.
+Each point needs one evaluation of the model, run in parallel when the fit
+is. Use ``--err-samples=0`` to report the square root of the diagonal of the
+covariance matrix instead.
+
+The points are drawn from a multivariate t distribution with 10 degrees of
+freedom, centered on the best fit and scaled to the covariance matrix of the
+fit, which keeps the result reliable when the posterior is somewhat wider,
+narrower or heavier tailed than the covariance matrix suggests. Each point
+$x$ is weighted by $P(x)/Q(x)$, where $P(x) \propto e^{-\text{nllf}(x)}$ is
+the posterior probability and $Q(x)$ is the probability of drawing $x$.
+
+The report includes the effective sample size, $(\sum w)^2/\sum w^2$ for
+weights $w$. This is close to the number of samples when the covariance
+matrix describes the posterior well, and the uncertainty in the reported
+intervals scales as one over its square root. Bumps warns that the
+uncertainties are unreliable when the effective sample size is less than 10%
+of the samples, in which case use :ref:`fit-dream` instead. It also warns when
+a sampled point is better than the best fit, which means the fit did not reach
+the minimum.
 
 .. _option-cov:
 

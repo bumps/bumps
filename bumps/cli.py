@@ -63,6 +63,7 @@ from . import api
 from . import options as fit_options
 from . import persistent_settings
 from .fitproblem import FitProblem, load_problem
+from .importance import DEFAULT_SAMPLES
 from .logger import logger, setup_console_logging, LOGLEVEL
 from .state import SERIALIZERS, FitResult
 
@@ -108,6 +109,7 @@ class BumpsOptions:
     resume: bool = False
     show_cov: bool = False
     show_err: bool = False
+    err_samples: int = DEFAULT_SAMPLES
     show_entropy: Optional[str] = None
 
     # Session file controls.
@@ -318,7 +320,19 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--err",
         action="store_true",
         dest="show_err",
-        help="Show uncertainty from covariance",
+        help="Show parameter uncertainty (see --err-samples for fits without an MCMC sample)",
+    )
+    output.add_argument(
+        "--err-samples",
+        dest="err_samples",
+        type=int,
+        default=BumpsOptions.err_samples,
+        metavar="N",
+        help=dedent("""\
+        Number of points drawn from the covariance matrix and weighted by the
+        likelihood to estimate the uncertainty for --err and --export when the
+        fit has no MCMC sample. Use 0 to report the square root of the
+        covariance diagonal instead."""),
     )
     output.add_argument(
         "--cov",
@@ -830,8 +844,27 @@ def interpret_fit_options(options: BumpsOptions):
             if api.state.problem is not None:
                 await api.start_fit_thread(fitter_id, fitopts, resume=options.resume)
 
+        # Without an MCMC sample, --err and --export report the uncertainty from
+        # points drawn from the covariance matrix and weighted by the likelihood.
+        # Draw them once so that both can use them.
+        err_sample = {}
+
+        async def draw_err_sample(App=None):
+            if api.state.problem is None or hasattr(api.state.fitting.fit_state, "draw"):
+                return
+            problem = api.state.problem.fitProblem
+            try:
+                err_sample["sample"] = await asyncio.to_thread(api.draw_cov_sample, problem, options.err_samples)
+            except Exception as exc:
+                print(f"Using the covariance diagonal for the uncertainty since sampling failed: {exc}")
+
         # TODO: This is duplicating code from bumps/fitters.py. Move it and share it.
-        def _show_results(show_err: bool = True, show_cov: bool = False, show_entropy: str | None = None):
+        def _show_results(
+            show_err: bool = True,
+            show_cov: bool = False,
+            show_entropy: str | None = None,
+            sample=None,
+        ):
             import numpy as np
             from bumps.lsqerror import stderr
             from bumps.dream.entropy import cov_entropy
@@ -856,23 +889,25 @@ def interpret_fit_options(options: BumpsOptions):
                     entropy_method = show_entropy
                     S, dS = state.entropy(method=entropy_method)
             else:
-                cov = problem.cov(x)
-                vstats = None
+                cov = problem.cov(x) if sample is None else sample.proposal.cov
+                vstats = None if sample is None else var_stats(sample.draw())
                 dx = stderr(cov)
                 S, dS = cov_entropy(cov), 0
 
             if show_cov:
                 problem.show_cov(x, cov)
             if show_err:
-                if state is None:
+                if vstats is None:
                     problem.show_err(x, dx)
                 else:
                     print(format_vars(vstats))
+                    if sample is not None:
+                        print(sample.summary())
             if show_entropy:
                 print(f"Entropy: {format_uncertainty(S, dS)} bits")
 
         async def show_results(App=None):
-            _show_results(options.show_err, options.show_cov, options.show_entropy)
+            _show_results(options.show_err, options.show_cov, options.show_entropy, err_sample.get("sample"))
 
         on_startup.append(start_fit)
         api.state.console_update_interval = 0 if options.use_webview() else 1
@@ -882,10 +917,17 @@ def interpret_fit_options(options: BumpsOptions):
             # TODO: can we default the session file name to model.hdf?
             raise RuntimeError("Include '--session=output.h5' on the command line to save the fit.")
 
+        if options.autostop() and options.err_samples > 0 and (options.show_err or options.export):
+            on_complete.append(draw_err_sample)
+
         # TODO: if not autostop maybe --export after fit only or after every fit
         if options.export and options.autostop():
             # print("adding completion lambda")
-            on_complete.append(lambda App=None: api.export_results(options.export))
+            on_complete.append(
+                lambda App=None: api.export_results(
+                    options.export, err_samples=options.err_samples, err_sample=err_sample.get("sample")
+                )
+            )
 
         if options.autostop():
             on_complete.append(show_results)
