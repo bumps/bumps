@@ -396,6 +396,14 @@ Setting(
     evidence. A pfrac of 1 allocates all samples to resolving the posterior, and a
     pfrac of 0 allocates them all to narrowing the evidence to within dlogz.""",
 )
+Setting(
+    "n_effective",
+    "Target effective samples",
+    int,
+    """\
+    Target effective sample size (ESS) for the posterior. Only used when pfrac > 0;
+    sampling continues until the estimated ESS reaches n_effective.""",
+)
 Setting("bound_method", "Bounding method", list("none single multi balls cubes".split()),
         "How likelihood contours of live points should be bounded.\n"
         "  none: sample from the entire unit hypercube.\n"

@@ -1114,6 +1114,7 @@ class NestedSamplerFit(FitBase):
                 ("pop", 100),
                 ("dlogz", 0.01),
                 ("pfrac", 0.0),
+                ("n_effective", 10000),
                 ("bound_method", "multi"),
                 ("sample_method", "auto")]
 
@@ -1154,7 +1155,11 @@ class NestedSamplerFit(FitBase):
         options = _fill_defaults(options, self.settings)
         steps = options["steps"]
         # arguments for stopping criteria 
-        stop_args = {"pfrac": options["pfrac"], "evid_thresh": options["dlogz"]}
+        stop_args = {
+            "pfrac": options["pfrac"],
+            "evid_thresh": options["dlogz"],
+            "target_n_effective": options["n_effective"],
+        }
 
         # the number of live points is only needed by the constructor
         ndim = len(self.parameters)
