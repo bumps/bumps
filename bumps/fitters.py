@@ -1104,7 +1104,7 @@ class NestedSamplerFit(FitBase):
     A nested sampler fitter.
     """
     name = "Nested Sampling"
-    id = "nested_sampling"
+    id = "ns"
     settings = [
             # TODO: https://github.com/bumps/bumps/issues/480
             ]
@@ -2261,7 +2261,7 @@ def test_fitters(subtests):
     # so it is a little away from the true minimum; 
     # Relative to the intercept (0.11 +/- 0.06) that is a few parts in 1000,
     # so it needs a looser tolerance on the values than the optimizers do.
-    fitter_tols = {"nested_sampling": 1e-2}
+    fitter_tols = {"ns": 1e-2}
 
     store = None
     export = None
