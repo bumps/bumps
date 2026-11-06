@@ -79,14 +79,22 @@ class ConvergenceMonitor(monitor.Monitor):
 
     message: str = "convergence_update"
 
-    def __init__(self, problem, rate=0, quantiles: Optional[NDArray] = None, logz: Optional[NDArray] = None):
+    def __init__(
+        self,
+        problem,
+        rate=0,
+        quantiles: Optional[NDArray] = None,
+        logz: Optional[NDArray] = None,
+        dlogz: Optional[NDArray] = None,
+    ):
         self.time = 0
         self.rate = rate  # rate=0 for no progress update, only final
         self.problem = problem
         self.quantiles = [] if quantiles is None else quantiles.tolist()
-        # Kept beside the quantiles rather than as a seventh column: it is not a
-        # quantile of the population and must not be normalized by dof.
+        # Kept beside the quantiles rather than as extra columns: they are not
+        # quantiles of the population and must not be normalized by dof.
         self.logz = [] if logz is None else list(logz)
+        self.dlogz = [] if dlogz is None else list(dlogz)
 
     def config_history(self, history):
         history.requires(population_values=1, value=1)
@@ -111,9 +119,10 @@ class ConvergenceMonitor(monitor.Monitor):
             self.quantiles.append((best,))
 
         try:
-            # Fitters that don't report evidence never set the trace (and the
-            # mystic solver doesn't provide it), so self.logz stays empty.
+            # Fitters that don't report evidence never set the traces (and the
+            # mystic solver doesn't provide them), so these stay empty.
             self.logz.append(history.logz[0])
+            self.dlogz.append(history.dlogz[0])
         except (AttributeError, IndexError):
             pass
 
@@ -133,7 +142,8 @@ class ConvergenceMonitor(monitor.Monitor):
         # TODO: rename pop to quantiles in convergence_update message
         quantiles = np.empty((0, 1), "d") if not self.quantiles else np.array(self.quantiles)
         logz = np.array(self.logz, "d") if self.logz else None
-        evt = dict(message=self.message, convergence=quantiles, logz=logz)
+        dlogz = np.array(self.dlogz, "d") if self.dlogz else None
+        evt = dict(message=self.message, convergence=quantiles, logz=logz, dlogz=dlogz)
         EVT_FIT_PROGRESS.send(evt)
 
 
@@ -214,6 +224,7 @@ class FitThread(Thread):
         fit_state=None,
         convergence=None,
         logz=None,
+        dlogz=None,
         # outputs=None,
     ):
         # base class initialization
@@ -226,6 +237,7 @@ class FitThread(Thread):
         self.fit_state = fit_state
         self.convergence = convergence
         self.logz = logz
+        self.dlogz = dlogz
         # print(f"   *** FitThread {options}")
         self.options = options if isinstance(options, dict) else {}
         self.mapper = mapper
@@ -257,7 +269,11 @@ class FitThread(Thread):
             monitors = [
                 GUIProgressMonitor(self.problem),
                 ConvergenceMonitor(
-                    self.problem, rate=self.convergence_update, quantiles=self.convergence, logz=self.logz
+                    self.problem,
+                    rate=self.convergence_update,
+                    quantiles=self.convergence,
+                    logz=self.logz,
+                    dlogz=self.dlogz,
                 ),
                 # GUIMonitor(self.problem,
                 #            message="convergence_update",

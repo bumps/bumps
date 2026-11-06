@@ -140,7 +140,9 @@ class MonitorRunner(object):
 
     def __init__(self, monitors: List[monitor.Monitor], problem, abort_test=None, max_time=0.0):
         self.monitors = monitors
-        self.history = History(time=1, step=1, point=1, value=1, population_points=1, population_values=1, logz=1)
+        self.history = History(
+            time=1, step=1, point=1, value=1, population_points=1, population_values=1, logz=1, dlogz=1
+        )
         # Pre-populate history.time so we can call stopping() before the first update.
         self.history.update(time=0.0)
         for M in self.monitors:
@@ -157,6 +159,7 @@ class MonitorRunner(object):
         population_points: Optional[NDArray] = None,
         population_values: Optional[NDArray] = None,
         logz: Optional[float] = None,
+        dlogz: Optional[float] = None,
     ):
         # Note: DEFit doesn't use MonitorRunner for config/update
         updates = dict(
@@ -168,8 +171,10 @@ class MonitorRunner(object):
             population_values=population_values,
         )
         if logz is not None:
-            # Leave the trace untouched for fitters that don't report evidence.
+            # Leave the traces untouched for fitters that don't report evidence.
             updates["logz"] = logz
+        if dlogz is not None:
+            updates["dlogz"] = dlogz
         self.history.update(**updates)
         for M in self.monitors:
             M(self.history)
@@ -1275,8 +1280,13 @@ class NestedSamplerFit(FitBase):
             self._best_value = population_values[k]
         # Batch iterations yield an IteratorResultShort with no logz: the evidence
         # is only well defined again once the batch is combined, so report the
-        # estimate from the last combined run until then.
-        logz = getattr(results, "logz", self._logz)
+        # estimate from the last combined run until then. Their delta_logz is
+        # measured against the batch sampler's own evidence rather than the
+        # evidence of the run as a whole, so report it as missing instead.
+        in_batch = not hasattr(results, "logz")
+        logz = self._logz if in_batch else results.logz
+        # dynesty reports delta_logz as 1e300 until the first integration step.
+        dlogz = np.nan if in_batch or results.delta_logz >= 1e300 else results.delta_logz
         monitors.update(
             step=step,
             point=self._best_point,
@@ -1284,6 +1294,7 @@ class NestedSamplerFit(FitBase):
             population_points=population_points,
             population_values=population_values,
             logz=float(logz),
+            dlogz=float(dlogz),
         )
 
     def _live_points(self):
@@ -2016,6 +2027,7 @@ def _build_fit_result(problem, webview_fit):
         state=fit_state,
         convergence=webview_fit.convergence,
         logz=getattr(webview_fit, "logz", None),
+        dlogz=getattr(webview_fit, "dlogz", None),
         method=webview_fit.method,
         options=webview_fit.options,
     )
@@ -2026,7 +2038,7 @@ def _build_fit_result(problem, webview_fit):
 # state is not JSON serializable and the convergence and log evidence histories
 # belong with the plottable outputs rather than the fit summary; all are
 # available in the session file.
-_FIT_RESULT_EXCLUDE_FIELDS = ("state", "convergence", "logz")
+_FIT_RESULT_EXCLUDE_FIELDS = ("state", "convergence", "logz", "dlogz")
 
 
 def fit_result_summary(results: OptimizeResult) -> dict:
@@ -2213,6 +2225,7 @@ def fit(
     fit_state = driver.fitter.state
     steps = driver.monitor_runner.history.step[0]
     logz = np.array(convergence.logz, "d") if convergence.logz else None
+    dlogz = np.array(convergence.dlogz, "d") if convergence.dlogz else None
     convergence = np.array(convergence.quantiles)
     # Note: OptimizeResult is a dict with dot accessor and a pretty printer.
     # Keys are by convention:
@@ -2242,6 +2255,7 @@ def fit(
         state=fit_state,
         convergence=convergence,
         logz=logz,
+        dlogz=dlogz,
         method=method,
         options=options,
     )
@@ -2300,6 +2314,7 @@ def save_fit(
         options=fit.options,
         convergence=fit.convergence,
         logz=fit.get("logz"),
+        dlogz=fit.get("dlogz"),
         fit_state=fit.state,
     )
     # TODO: move the label gnerator into a function so it is the same for simple fit as for webview
