@@ -193,6 +193,23 @@ def fitness_chisq_str(fitness: Fitness) -> str:
     return text
 
 
+def logz_str(logz) -> str:
+    """
+    Return a string showing the final log evidence estimate of a fit.
+
+    *logz* is the running log evidence of a nested sampling fit, with one
+    value per step, or None for the fitters that do not estimate the
+    evidence. The empty string is returned when there is no estimate to
+    show, so that the caller can leave it off the display entirely.
+    """
+    if logz is None:
+        return ""
+    values = np.asarray(logz, "d").reshape(-1)
+    if values.size == 0 or isnan(values[-1]):
+        return ""
+    return f"log Z = {values[-1]:.2f}"
+
+
 def fitness_show_parameters(fitness: Fitness, subs: util.Optional[util.Dict[util.Any, Parameter]] = None):
     """Print the available parameters to the console as a tree."""
     print(parameter.format(fitness.parameters(), freevars=subs))
@@ -858,7 +875,7 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
             fitness_show_parameters(f, subs=self.freevars.get_model(i))
         print("[overall chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
-    def plot(self, p=None, fignum=1, figfile=None, view=None, model_indices=None):
+    def plot(self, p=None, fignum=1, figfile=None, view=None, model_indices=None, logz=None):
         # TODO: remove duplicate logic from FitProblem.plot() and api.get_data_plot
         import matplotlib.pyplot as plt
 
@@ -872,6 +889,8 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
 
         # Overall chisq
         overall_chisq_str = self.chisq_str()
+        # Log evidence, for the fitters that estimate it (nested sampling)
+        evidence_str = logz_str(logz)
 
         for i, f in enumerate(self.models):
             outfile = f"{figfile}-model{i}.png" if figfile else None
@@ -891,6 +910,8 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
             else:
                 chisq = f"χ² = {overall_chisq_str}"
                 title = f"{f.name}"
+            if evidence_str:
+                chisq = f"{chisq}; {evidence_str}"
             fontsize = 16
 
             if backend == "plotly":

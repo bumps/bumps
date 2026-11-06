@@ -55,7 +55,7 @@ import time
 from . import errplot
 from . import options as fit_options
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
-from .fitproblem import Fitness, FitProblem, load_problem, load_pars, fitness_chisq_str
+from .fitproblem import Fitness, FitProblem, load_problem, load_pars, fitness_chisq_str, logz_str
 from .fitters import FitDriver, OptimizeResult, FIT_DEFAULT_ID, FIT_ACTIVE_IDS, save_fit_result
 from .logger import logger
 from .mapper import MPMapper
@@ -247,10 +247,12 @@ async def set_fit_result(fit_result: FitResult):
         method=fit_result.method,
         options=fit_result.options,
         convergence=fit_result.convergence,
+        logz=getattr(fit_result, "logz", None),
+        stopping_criterion=getattr(fit_result, "stopping_criterion", None),
         fit_state=getattr(fit_result, "fit_state", getattr(fit_result, "state", None)),
     )
     # Use shared settings by default, update from any provided options
-    state.set_convergence(fit_result.convergence)
+    state.set_convergence(fit_result.convergence, fit_result.logz, fit_result.stopping_criterion)
     state.set_fit_state(fit_result.fit_state, method=fit_result.method)
     state.shared.active_history = None
     await set_fit_options(fitter_id=fit_result.method, options=fit_result.options)
@@ -596,8 +598,9 @@ def export_fit(
     # Handle OptimizeResult or FitResult
     fit_state = getattr(fit, "fit_state", getattr(fit, "state", None))
     with push_mpl_backend("agg"):
-        # Produce model plots
-        problem.plot(figfile=output_pathstr)
+        # Produce model plots, annotated with the log evidence if the fitter
+        # estimated one (OptimizeResult and webview FitResult both carry logz)
+        problem.plot(figfile=output_pathstr, logz=getattr(fit, "logz", None))
 
         # TODO: produce convergence plot and write convergence data
 
@@ -820,6 +823,8 @@ async def start_fit_thread(
         console_update=state.console_update_interval,
         fit_state=state.fitting.fit_state,
         convergence=state.fitting.convergence,
+        logz=state.fitting.logz,
+        stopping_criterion=state.fitting.stopping_criterion,
     )
 
     await log(
@@ -871,7 +876,7 @@ async def _fit_progress_handler(event: Dict):
         if message == "complete":
             state.shared.active_fit = {}
     elif message == "convergence_update":
-        state.set_convergence(event["convergence"])
+        state.set_convergence(event["convergence"], event.get("logz"), event.get("stopping_criterion"))
     elif message == "progress":
         active_fit = state.shared.active_fit
         active_fit.update({"step": event["step"], "chisq": event["chisq"]})
@@ -1000,6 +1005,10 @@ async def get_data_plot(model_indices: Optional[List[int]] = None):
 
     # Overall chisq
     overall_chisq_str = fitProblem.chisq_str()
+    # Log evidence from the current fit, for the fitters that estimate it
+    # (nested sampling). Empty for the others, and after the model is edited
+    # since that clears the fit result.
+    evidence_str = logz_str(getattr(state.fitting, "logz", None))
     with fitProblem.push_model(index) as model:
         # # "per model" chisq
         if fitProblem.num_models > 1:
@@ -1009,6 +1018,8 @@ async def get_data_plot(model_indices: Optional[List[int]] = None):
         else:
             text = f"χ² = {overall_chisq_str}"
             title = f"{model.name}"
+        if evidence_str:
+            text = f"{text}; {evidence_str}"
         if hasattr(model, "plotly"):
             return _get_data_plot_plotly(model, title=title, chisq=text)
         elif hasattr(model, "plot"):
@@ -1261,7 +1272,13 @@ async def get_convergence_plot(
             stored_portion = None
 
         plotdata = convergence_plot(
-            convergence, dof, cutoff=cutoff, trim_index=trim_index, burn_index=burn_index, max_points=max_points
+            convergence,
+            dof,
+            cutoff=cutoff,
+            trim_index=trim_index,
+            burn_index=burn_index,
+            max_points=max_points,
+            stopping_criterion=state.fitting.stopping_criterion,
         )
         output = {
             "plotdata": plotdata,
