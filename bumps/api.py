@@ -248,11 +248,11 @@ async def set_fit_result(fit_result: FitResult):
         options=fit_result.options,
         convergence=fit_result.convergence,
         logz=getattr(fit_result, "logz", None),
-        dlogz=getattr(fit_result, "dlogz", None),
+        stopping_criterion=getattr(fit_result, "stopping_criterion", None),
         fit_state=getattr(fit_result, "fit_state", getattr(fit_result, "state", None)),
     )
     # Use shared settings by default, update from any provided options
-    state.set_convergence(fit_result.convergence, fit_result.logz, fit_result.dlogz)
+    state.set_convergence(fit_result.convergence, fit_result.logz, fit_result.stopping_criterion)
     state.set_fit_state(fit_result.fit_state, method=fit_result.method)
     state.shared.active_history = None
     await set_fit_options(fitter_id=fit_result.method, options=fit_result.options)
@@ -824,7 +824,7 @@ async def start_fit_thread(
         fit_state=state.fitting.fit_state,
         convergence=state.fitting.convergence,
         logz=state.fitting.logz,
-        dlogz=state.fitting.dlogz,
+        stopping_criterion=state.fitting.stopping_criterion,
     )
 
     await log(
@@ -876,7 +876,7 @@ async def _fit_progress_handler(event: Dict):
         if message == "complete":
             state.shared.active_fit = {}
     elif message == "convergence_update":
-        state.set_convergence(event["convergence"], event.get("logz"), event.get("dlogz"))
+        state.set_convergence(event["convergence"], event.get("logz"), event.get("stopping_criterion"))
     elif message == "progress":
         active_fit = state.shared.active_fit
         active_fit.update({"step": event["step"], "chisq": event["chisq"]})
@@ -1278,7 +1278,7 @@ async def get_convergence_plot(
             trim_index=trim_index,
             burn_index=burn_index,
             max_points=max_points,
-            dlogz=state.fitting.dlogz,
+            stopping_criterion=state.fitting.stopping_criterion,
         )
         output = {
             "plotdata": plotdata,
