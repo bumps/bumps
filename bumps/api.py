@@ -1453,35 +1453,6 @@ async def get_parameter_trace_plot(var: int):
 
 
 @register
-async def get_nested_trace_plot():
-    fit_state = state.fitting.fit_state
-    # TODO: Updated this when https://github.com/bumps/bumps/issues/482 is resolved.
-
-    # if isinstance(fit_state, Nesteddraw)
-
-    if hasattr(fit_state, "results"):
-        results = fit_state.results
-        import time
-
-        start_time = time.time()
-        logger.info(f"queueing new nested trace plot... {start_time}")
-        results_dict = {
-            "samples": results["samples"],
-            "logvol": results["logvol"],
-            "importance_weights": results.importance_weights(),
-            "samples_id": results["samples_id"],
-        }
-        fig = plot_nested_trace(results_dict, connect=True)
-        logger.info(f"time to render but not serialize... {time.time() - start_time}")
-        dfig = fig.to_dict()
-        end_time = time.time()
-        logger.info(f"time to draw parameter_trace plot: {end_time - start_time}")
-        return to_json_compatible_dict(dfig)
-    else:
-        return None
-
-
-@register
 async def get_parameters(only_fittable: bool = False):
     if state.problem is None or state.problem.fitProblem is None:
         return []
