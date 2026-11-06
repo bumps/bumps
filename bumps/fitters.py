@@ -2325,7 +2325,7 @@ def test_fitters(subtests):
             # get tolerance for fitters with exceptions
             value_tol = fitter_tols.get(fitter_name, fit_value_tol)
             assert_allclose(result.x, expected_value, rtol=value_tol)
-            if fitter_name not in ("dream", "nested_sampling"):
+            if fitter_name not in ("dream", "ns"):
                 # The samplers take their error bars from the posterior sample
                 # rather than from the curvature at the optimum, so they vary
                 # too much to test.
