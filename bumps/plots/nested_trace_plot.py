@@ -15,31 +15,6 @@ from dynesty.utils import quantile as _quantile
 from dynesty.utils import get_random_generator, resample_equal
 
 
-def plot_truth(fig,
-                axes_indices,
-                truths,
-                truth_color,
-                vertical=None,
-                horizontal=None):
-    """
-    Plot the truth line (horizontal or vertical).
-    truths can be None or one value or a list
-    """
-
-    if truths is not None:
-        try:
-            curt = iter(truths)
-        except TypeError:
-            curt = [truths]
-        for t in curt:
-            if vertical:
-                func = fig.add_vline(x=t, line_color=truth_color, **axes_indices)
-            elif horizontal:
-                func = fig.add_hline(y=t, line_color=truth_color, **axes_indices)
-            else:
-                raise ValueError('vertical or horizontal option must be specified')
-
-
 def check_span(span, samples, weights):
     """
     If span is a list of scalars, replace it by the list of bounds.
@@ -49,30 +24,30 @@ def check_span(span, samples, weights):
         try:
             iter(span[i])
             if len(span[i]) != 2:
-                raise ValueError('Incorrect span value')
+                raise ValueError("Incorrect span value")
         except TypeError:
             q = [0.5 - 0.5 * span[i], 0.5 + 0.5 * span[i]]
             span[i] = _quantile(samples[i], q, weights=weights)
 
 
-def plot_nested_trace(results,
-                    span=None,
-                    quantiles=(0.025, 0.5, 0.975),
-                    smooth=0.02,
-                    thin=1,
-                    dims=None,
-                    post_color='blue',
-                    kde=True,
-                    nkde=1000,
-                    trace_cmap='plasma',
-                    trace_color=None,
-                    connect=False,
-                    connect_highlight=10,
-                    connect_color='red',
-                    show_titles=True,
-                    title_quantiles=(0.025, 0.5, 0.975),
-                    truths=None,
-                    truth_color='black'):
+def plot_nested_trace(
+    results,
+    span=None,
+    quantiles=(0.025, 0.5, 0.975),
+    smooth=0.02,
+    thin=1,
+    dims=None,
+    post_color="blue",
+    kde=True,
+    nkde=1000,
+    trace_cmap="plasma",
+    trace_color=None,
+    connect=False,
+    connect_highlight=10,
+    connect_color="red",
+    show_titles=True,
+    title_quantiles=(0.025, 0.5, 0.975),
+):
     """
     Plot traces and marginalized posteriors for each parameter.
 
@@ -86,33 +61,33 @@ def plot_nested_trace(results,
                 span = [(0., 10.), 0.95, (5., 6.)]
 
             Default is `0.999999426697` (5-sigma credible interval) for each parameter.
-        quantiles (iterable, optional) : A list of fractional quantiles to overplot on the 
+        quantiles (iterable, optional) : A list of fractional quantiles to overplot on the
             1-D marginalized posteriors as vertical dashed lines. Default is `[0.025, 0.5, 0.975]`
             (the 95%/2-sigma credible interval).
-        smooth (float or iterable, optional) : The standard deviation (either a single value or 
+        smooth (float or iterable, optional) : The standard deviation (either a single value or
             a different value for each subplot) for the Gaussian kernel used to smooth the 1-D
             marginalized posteriors, expressed as a fraction of the span.
             Default is `0.02` (2% smoothing). If an integer is provided instead,
             this will instead default to a simple (weighted) histogram with `bins=smooth`.
         thin (int, optional) : Thin the samples so that only each `thin`-th sample is plotted.
             Default is `1` (no thinning).
-        dims (iterable, optional) : The subset of dimensions that should be plotted. 
+        dims (iterable, optional) : The subset of dimensions that should be plotted.
             If not provided, all dimensions will be shown.
         post_color (str, optional) : A color (either a single color or a different
             value for each subplot) used when plotting the histograms. Default is `'blue'`.
         kde (bool, optional) : Whether to use kernel density estimation to estimate and plot
-            the PDF of the importance weights as a function of log-volume (as opposed to the 
+            the PDF of the importance weights as a function of log-volume (as opposed to the
             importance weights themselves). Default is `True`.
         nkde (int, optional) : The number of grid points used when plotting the kernel density estimate.
             Default is `1000`.
         trace_cmap (str, optional) : A colormap used when plotting the traces,
             Default is `'plasma'`.
-        trace_color (str, optional) : A color used when plotting the traces. This overrides the `trace_cmap` 
-            option by giving all points the same color. 
+        trace_color (str, optional) : A color used when plotting the traces. This overrides the `trace_cmap`
+            option by giving all points the same color.
             Default is `None` (not used).
         connect (bool, optional) : Whether to draw lines connecting the paths of unique particles.
             Default is `False`.
-        connect_highlight (int or iterable, optional) : If `connect=True`, highlights the paths 
+        connect_highlight (int or iterable, optional) : If `connect=True`, highlights the paths
             of a specific set of particles. If an integer is passed, :data:`connect_highlight`
             random particle paths will be highlighted. If an iterable is passed,
             then the particle paths corresponding to the provided indices will be highlighted.
@@ -121,13 +96,8 @@ def plot_nested_trace(results,
             showing the 0.5 quantile along with the upper/lower bounds associated
             with the 0.025 and 0.975 (95%/2-sigma credible interval) quantiles.
             Default is `True`.
-        title_quantiles (iterable, optional) : A list of fractional quantiles to use in the title. 
+        title_quantiles (iterable, optional) : A list of fractional quantiles to use in the title.
             Default is `[0.025, 0.5, 0.975]` (median plus 95%/2-sigma credible interval).
-        truths (iterable, optional) : A list of reference values that will be overplotted on the traces and
-            marginalized 1-D posteriors as solid horizontal/vertical lines. Individual values can be exempt 
-            using `None`. 
-            Default is `None`.
-        truth_color (str, optional) : A color used when plotting `truths`. Default is `'black'`.
 
     Returns:
         plotly.graph_objects.Figure : Output trace plot.
@@ -137,9 +107,9 @@ def plot_nested_trace(results,
     # Set defaults.
     rstate = get_random_generator()
     # Extract weighted samples.
-    samples = results['samples']
-    logvol = results['logvol']
-    weights = results['importance_weights']
+    samples = results["samples"]
+    logvol = results["logvol"]
+    weights = results["importance_weights"]
 
     if kde:
         # Derive kernel density estimate.
@@ -180,8 +150,8 @@ def plot_nested_trace(results,
 
     # Check sample IDs.
     if connect:
-        if 'samples_id' in results.keys():
-            samples_id = results['samples_id']
+        if "samples_id" in results.keys():
+            samples_id = results["samples_id"]
             uid = np.unique(samples_id)
         else:
             raise ValueError("Sample IDs are not defined!")
@@ -220,53 +190,51 @@ def plot_nested_trace(results,
         else:
             color = wts[::thin]
         # Setup axes.
-        fig.update_xaxes(title_text=r"$-\ln X$", range=[0., -min(logvol)], nticks=max_n_ticks, row=i+1, col=1)
-        fig.update_yaxes(title_text=labels[i], range=[min(x), max(x)], nticks=max_n_ticks, row=i+1, col=1)
-        
+        fig.update_xaxes(title_text=r"$-\ln X$", range=[0.0, -min(logvol)], nticks=max_n_ticks, row=i + 1, col=1)
+        fig.update_yaxes(title_text=labels[i], range=[min(x), max(x)], nticks=max_n_ticks, row=i + 1, col=1)
+
         # Plot trace.
         fig.add_trace(
-            go.Scatter(x=-logvol[::thin], y=x[::thin], mode='markers', marker={'color': color, 'colorscale': trace_cmap}),
-            row=i+1, col=1
+            go.Scatter(
+                x=-logvol[::thin], y=x[::thin], mode="markers", marker={"color": color, "colorscale": trace_cmap}
+            ),
+            row=i + 1,
+            col=1,
         )
-        
+
         if connect:
             # Add lines highlighting specific particle paths.
             for j in ids:
                 sel = samples_id[::thin] == j
-                fig.add_trace(go.Scatter(x=-logvol[::thin][sel], y=x[::thin][sel], mode='lines', line=dict(width=1, color=connect_color)),
-                              row=i+1, col=1
-                        )
-        
-        # Add truth value(s).
-        if truths is not None:
-            plot_truth(fig, 
-                        {'row':i+1, 'col':1},
-                        truths[i],
-                        truth_color,
-                        horizontal=True)
-        
+                fig.add_trace(
+                    go.Scatter(
+                        x=-logvol[::thin][sel], y=x[::thin][sel], mode="lines", line=dict(width=1, color=connect_color)
+                    ),
+                    row=i + 1,
+                    col=1,
+                )
+
         # Set color(s).
         if isinstance(post_color, str):
             color = post_color
         else:
             color = post_color[i]
-        
+
         # Setup axes
-        fig.update_xaxes(title_text=labels[i], range=span[i], nticks=max_n_ticks, row=i+1, col=2)
-        fig.update_yaxes(showticklabels=False, row=i+1, col=2)
-        
+        fig.update_xaxes(title_text=labels[i], range=span[i], nticks=max_n_ticks, row=i + 1, col=2)
+        fig.update_yaxes(showticklabels=False, row=i + 1, col=2)
+
         # Generate distribution.
         s = smooth[i]
         # Plot marginalized 1-D posterior.
         if isinstance(s, int):
             # If `s` is an integer, plot a weighted histogram with
             # `s` bins within the provided bounds.
-   
-            n, b = np.histogram(x, bins=s, weights=weights, range=np.sort(span[i])) 
+
+            n, b = np.histogram(x, bins=s, weights=weights, range=np.sort(span[i]))
             fig.add_trace(
-                    go.Bar(x=b[:-1], y=n, width=b[1]-b[0], offset=0, color=color, opacity=0.6),
-                    row=i+1, col=2
-                    )
+                go.Bar(x=b[:-1], y=n, width=b[1] - b[0], offset=0, color=color, opacity=0.6), row=i + 1, col=2
+            )
 
             x0 = np.array(list(zip(b[:-1], b[1:]))).flatten()
             y0 = np.array(list(zip(n, n))).flatten()
@@ -274,31 +242,21 @@ def plot_nested_trace(results,
             # If `s` is a float, oversample the data relative to the
             # smoothing filter by a factor of 10, then use a Gaussian
             # filter to smooth the results.
-            bins = int(round(10. / s))
-            n, b = np.histogram(x,
-                                bins=bins,
-                                weights=weights,
-                                range=np.sort(span[i]))
-            n = norm_kde(n, 10.)
+            bins = int(round(10.0 / s))
+            n, b = np.histogram(x, bins=bins, weights=weights, range=np.sort(span[i]))
+            n = norm_kde(n, 10.0)
             x0 = 0.5 * (b[1:] + b[:-1])
             y0 = n
             fig.add_trace(
-            go.Scatter(x=x0, y=y0, mode='lines', line=dict(width=1, color=color), fill='tonexty'),
-            row=i+1, col=2
+                go.Scatter(x=x0, y=y0, mode="lines", line=dict(width=1, color=color), fill="tonexty"), row=i + 1, col=2
             )
-            fig.update_yaxes(range=[0., max(y0) * 1.05], row=i+1, col=2)
+            fig.update_yaxes(range=[0.0, max(y0) * 1.05], row=i + 1, col=2)
         # Plot quantiles.
         if quantiles is not None and len(quantiles) > 0:
             qs = _quantile(x, quantiles, weights=weights)
             for q in qs:
-                fig.add_vline(x=q, line_width=2, line_dash="dash", line_color=color, row=i+1, col=2)
-        # Add truth value(s).
-        if truths is not None:
-            plot_truth(fig, 
-                        {'row':i+1, 'col':2},
-                        truths[i],
-                        truth_color,
-                        vertical=True)
+                fig.add_vline(x=q, line_width=2, line_dash="dash", line_color=color, row=i + 1, col=2)
+
         # Set titles.
         if show_titles:
             ql, qm, qh = _quantile(x, title_quantiles, weights=weights)
@@ -307,5 +265,6 @@ def plot_nested_trace(results,
             title = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
             title = title.format(fmt(qm), fmt(q_minus), fmt(q_plus))
             title = "{0} = {1}".format(labels[i][:-1], title[1:])
-            fig.layout.annotations[2*i + 1].text = title
+            fig.layout.annotations[2 * i + 1].text = title
+
     return fig

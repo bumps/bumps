@@ -1008,7 +1008,7 @@ async def get_data_plot(model_indices: Optional[List[int]] = None):
         if fitProblem.num_models > 1:
             chisq_str = fitness_chisq_str(model)
             text = f"χ² = {chisq_str}; overall {overall_chisq_str}"
-            title = f"Model {index+1}: {model.name}"
+            title = f"Model {index + 1}: {model.name}"
         else:
             text = f"χ² = {overall_chisq_str}"
             title = f"{model.name}"
@@ -1434,22 +1434,27 @@ async def get_parameter_trace_plot(var: int):
     else:
         return None
 
+
 @register
 async def get_nested_trace_plot():
     fit_state = state.fitting.fit_state
     # TODO: Updated this when https://github.com/bumps/bumps/issues/482 is resolved.
-    if hasattr(fit_state, 'sample'):
+
+    # if isinstance(fit_state, Nesteddraw)
+
+    if hasattr(fit_state, "results"):
+        results = fit_state.results
         import time
+
         start_time = time.time()
         logger.info(f"queueing new nested trace plot... {start_time}")
-        results_dict = {'samples': fit_state['samples'],
-                        'logvol': fit_state['logvol'],
-                        'importance_weights': fit_state.importance_weights(),
-                        'samples_id': fit_state['samples_id'],
-                        }
-        fig = plot_nested_trace(results_dict, 
-                                truths=np.zeros(results_dict['samples'].shape[-1]),
-                                connect=True)
+        results_dict = {
+            "samples": results["samples"],
+            "logvol": results["logvol"],
+            "importance_weights": results.importance_weights(),
+            "samples_id": results["samples_id"],
+        }
+        fig = plot_nested_trace(results_dict, connect=True)
         logger.info(f"time to render but not serialize... {time.time() - start_time}")
         dfig = fig.to_dict()
         end_time = time.time()
@@ -1457,6 +1462,7 @@ async def get_nested_trace_plot():
         return to_json_compatible_dict(dfig)
     else:
         return None
+
 
 @register
 async def get_parameters(only_fittable: bool = False):
