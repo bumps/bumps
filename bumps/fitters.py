@@ -5,6 +5,7 @@ Interfaces to various optimizers.
 import json
 import sys
 import warnings
+from contextlib import contextmanager
 from time import perf_counter
 from pathlib import Path
 from typing import List, Tuple, Dict, Any, Optional
@@ -1131,6 +1132,43 @@ class NestedSamplerFit(FitBase):
        
         self.nested_sampler = None
 
+    @contextmanager
+    def _sampler_pool(self):
+        """
+        Yield (pool, loglikelihood, prior_transform, queue_size) for the sampler.
+
+        If the generic --parallel/--threads mapper machinery
+        (:class:`bumps.mapper.MPMapper` or :class:`bumps.mapper.ThreadPoolMapper`)
+        has already started a pool for this fit, reuse its worker count. For
+        multiprocessing, a dedicated :class:`NestedSamplerPool` is created
+        instead of reusing MPMapper's pool directly, since dynesty needs its
+        own worker-side function cache (see :class:`NestedSamplerPool`); it is
+        shut down again once the fit completes, and MPMapper's own pool is
+        left untouched. For threads, the pool itself is reused directly (no
+        serialization needed, since threads share memory), but with thread-local
+        copies of the problem (see :func:`bumps.mapper.dynesty_thread_functions`)
+        rather than ``self.log_likelihood``/``self.prior_transform`` - those
+        are bound to the single shared ``self.problem``, and dynesty calls
+        them directly from each worker thread, which would otherwise race to
+        mutate and read back results from that shared problem.
+        """
+        from .mapper import MPMapper, ThreadPoolMapper, NestedSamplerPool, dynesty_thread_functions
+
+        if MPMapper.pool is not None:
+            njobs = getattr(MPMapper.pool, "_processes", None)
+            with NestedSamplerPool(self.problem, njobs) as pool:
+                yield pool, pool.loglike, pool.prior_transform, njobs
+            return
+
+        if ThreadPoolMapper.pool is not None:
+            pool = ThreadPoolMapper.pool
+            njobs = getattr(pool, "_max_workers", None)
+            loglike, prior_transform = dynesty_thread_functions(self.problem)
+            yield pool, loglike, prior_transform, njobs
+            return
+
+        yield None, self.log_likelihood, self.prior_transform, None
+
     def log_likelihood(self, x):
         """
         Calculate the log-likelihood of the model.
@@ -1154,7 +1192,7 @@ class NestedSamplerFit(FitBase):
 
         options = _fill_defaults(options, self.settings)
         steps = options["steps"]
-        # arguments for stopping criteria 
+        # arguments for stopping criteria
         stop_args = {
             "pfrac": options["pfrac"],
             "evid_thresh": options["dlogz"],
@@ -1164,58 +1202,61 @@ class NestedSamplerFit(FitBase):
         # the number of live points is only needed by the constructor
         ndim = len(self.parameters)
         nlive = self._nlive(options, ndim)
-        self.nested_sampler = DynamicNestedSampler(
-            self.log_likelihood,
-            self.prior_transform,
-            ndim,
-            nlive=nlive,
-            bound=options["bound_method"],
-            sample=options["sample_method"],
-        )
+        with self._sampler_pool() as (pool, loglikelihood, prior_transform, queue_size):
+            self.nested_sampler = DynamicNestedSampler(
+                loglikelihood,
+                prior_transform,
+                ndim,
+                nlive=nlive,
+                bound=options["bound_method"],
+                sample=options["sample_method"],
+                pool=pool,
+                queue_size=queue_size,
+            )
 
-        niter = 0
-        aborted = monitors.stopping()
+            niter = 0
+            aborted = monitors.stopping()
 
-        # baseline initial sampling
-        if not aborted:
-            for _ in self.nested_sampler.sample_initial(dlogz=options["dlogz"], maxiter=steps):
-                niter += 1
-                self.update(monitors, niter)
-                if monitors.stopping():
-                    aborted = True
-                    break
+            # baseline initial sampling
+            if not aborted:
+                for _ in self.nested_sampler.sample_initial(dlogz=options["dlogz"], maxiter=steps):
+                    niter += 1
+                    self.update(monitors, niter)
+                    if monitors.stopping():
+                        aborted = True
+                        break
 
-        if niter == 0:
-            # restore starting point as we have no data
-            x = self.problem.getp()
-            return x, self.problem.nllf(x)
+            if niter == 0:
+                # restore starting point as we have no data
+                x = self.problem.getp()
+                return x, self.problem.nllf(x)
 
-        self.results = self.nested_sampler.results
-
-        # sample in batches until the stopping criterion is reached
-        # maxiter is per call, so we need to remove iters as we run
-        while not aborted and niter < steps:
-            if stopping_function(self.nested_sampler.results, args=stop_args):  # evaluate stop
-                break
-            logl_bounds = weight_function(self.nested_sampler.results)  # derive bounds
-            for _ in self.nested_sampler.sample_batch(logl_bounds=logl_bounds, maxiter=steps - niter):
-                niter += 1
-                self.update(monitors, niter)
-                # Check for user abort or fit timeout. The partial batch is
-                # discarded (it is not combined into the saved run) since its
-                # weights are only correct once the batch is complete.
-                if monitors.stopping():
-                    aborted = True
-                    break
-            if aborted:
-                break
-            self.nested_sampler.combine_runs()  # add new samples to previous results
             self.results = self.nested_sampler.results
 
-        # Note: on abort self.results holds the samples from the initial run plus
-        # any completed batches, so it is not updated from the sampler here.
-        if not aborted:
-            self.results = self.nested_sampler.results
+            # sample in batches until the stopping criterion is reached
+            # maxiter is per call, so we need to remove iters as we run
+            while not aborted and niter < steps:
+                if stopping_function(self.nested_sampler.results, args=stop_args):  # evaluate stop
+                    break
+                logl_bounds = weight_function(self.nested_sampler.results)  # derive bounds
+                for _ in self.nested_sampler.sample_batch(logl_bounds=logl_bounds, maxiter=steps - niter):
+                    niter += 1
+                    self.update(monitors, niter)
+                    # Check for user abort or fit timeout. The partial batch is
+                    # discarded (it is not combined into the saved run) since its
+                    # weights are only correct once the batch is complete.
+                    if monitors.stopping():
+                        aborted = True
+                        break
+                if aborted:
+                    break
+                self.nested_sampler.combine_runs()  # add new samples to previous results
+                self.results = self.nested_sampler.results
+
+            # Note: on abort self.results holds the samples from the initial run plus
+            # any completed batches, so it is not updated from the sampler here.
+            if not aborted:
+                self.results = self.nested_sampler.results
 
         return self._best_sample()
 
