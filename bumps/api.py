@@ -80,6 +80,7 @@ from .plots.traceplot import plot_trace
 from .plots.convergence_plot import convergence_plot
 from .plots.custom_plot import process_custom_plot, CustomWebviewPlot
 from .plots.corrplot import Corr2d
+from .plots.nested_trace_plot import plot_nested_trace
 
 
 # CRUFT: os.listdrives requires python 3.12 (and only exists on windows)
@@ -1005,7 +1006,7 @@ async def get_data_plot(model_indices: Optional[List[int]] = None):
         if fitProblem.num_models > 1:
             chisq_str = fitness_chisq_str(model)
             text = f"χ² = {chisq_str}; overall {overall_chisq_str}"
-            title = f"Model {index+1}: {model.name}"
+            title = f"Model {index + 1}: {model.name}"
         else:
             text = f"χ² = {overall_chisq_str}"
             title = f"{model.name}"
@@ -1405,10 +1406,10 @@ async def get_parameter_labels():
 @register
 async def get_parameter_trace_plot(var: int):
     fit_state = state.fitting.fit_state
+    import time
+
     # TODO: parallel tempering has a different trace plot
     if isinstance(fit_state, MCMCDraw):
-        import time
-
         start_time = time.time()
         logger.info(f"queueing new parameter_trace plot... {start_time}")
 
@@ -1423,6 +1424,23 @@ async def get_parameter_trace_plot(var: int):
             alpha=0.4,
         )
 
+        logger.info(f"time to render but not serialize... {time.time() - start_time}")
+        dfig = fig.to_dict()
+        end_time = time.time()
+        logger.info(f"time to draw parameter_trace plot: {end_time - start_time}")
+        return to_json_compatible_dict(dfig)
+    elif hasattr(fit_state, "results"):  # elif isinstance(fit_state, NestedDraw):
+        results = fit_state.results
+        start_time = time.time()
+        logger.info(f"queueing new nested trace plot... {start_time}")
+
+        results_dict = {
+            "samples": results["samples"][:, var],
+            "logvol": results["logvol"],
+            "importance_weights": results.importance_weights(),
+            "samples_id": results["samples_id"],
+        }
+        fig = plot_nested_trace(results_dict, connect=True)
         logger.info(f"time to render but not serialize... {time.time() - start_time}")
         dfig = fig.to_dict()
         end_time = time.time()
