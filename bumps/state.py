@@ -588,7 +588,7 @@ class FitResult:
     logz: Optional[List] = None
     """Running estimate of the log evidence at each step, or None if the fitter
     does not report one."""
-    dlogz: Optional[List] = None
+    stopping_criterion: Optional[List] = None
     """Running estimate of the log evidence remaining to be collected at each
     step, or None if the fitter does not report one. NaN for the steps where
     the estimate is not defined."""
@@ -610,7 +610,7 @@ class FitResult:
         write_json(fitting_group, "options", self.options)
         write_ndarray(fitting_group, "convergence", self.convergence)
         write_ndarray(fitting_group, "logz", self.logz)
-        write_ndarray(fitting_group, "dlogz", self.dlogz)
+        write_ndarray(fitting_group, "stopping_criterion", self.stopping_criterion)
         if self.fit_state is not None and include_fit_state:
             fitter = lookup_fitter(self.method)
             if hasattr(fitter, "h5dump"):
@@ -633,8 +633,8 @@ class FitResult:
             self.convergence = read_ndarray(fitting_group, "convergence")
             logz = read_ndarray(fitting_group, "logz")  # UNDEFINED in older 1.0 files
             self.logz = None if logz is UNDEFINED else logz
-            dlogz = read_ndarray(fitting_group, "dlogz")  # UNDEFINED in older 1.0 files
-            self.dlogz = None if dlogz is UNDEFINED else dlogz
+            stopping = read_ndarray(fitting_group, "stopping_criterion")  # UNDEFINED in older 1.0 files
+            self.stopping_criterion = None if stopping is UNDEFINED else stopping
             if "fit_state" in fitting_group:
                 state_group = fitting_group["fit_state"]
                 fitter = lookup_fitter(self.method)  # shouldn't raise ValueError
@@ -753,13 +753,13 @@ class State:
             self.shared.custom_plots_available = get_custom_plots_available(self.problem.fitProblem)
             # These are called only to trigger the update signals...
             # the convergence and fit_state will be unchanged by the calls below.
-            self.set_convergence(item.fitting.convergence, item.fitting.logz, item.fitting.dlogz)
+            self.set_convergence(item.fitting.convergence, item.fitting.logz, item.fitting.stopping_criterion)
             self.set_fit_state(item.fitting.fit_state, item.fitting.method)
 
     def set_active(self, problem, fitting: FitResult | None = None):
         self.problem = ProblemState(problem)  # default serializer
         self.fitting = fitting
-        self.set_convergence(fitting.convergence, fitting.logz, fitting.dlogz)
+        self.set_convergence(fitting.convergence, fitting.logz, fitting.stopping_criterion)
         self.set_fit_state(fitting.fit_state, fitting.method)
 
     def reset_fitstate(self, copy: bool = False):
@@ -783,11 +783,11 @@ class State:
             self.set_fit_state(None)
         self.shared.active_history = None
 
-    def set_convergence(self, convergence, logz=None, dlogz=None):
+    def set_convergence(self, convergence, logz=None, stopping_criterion=None):
         # print("setting convergence", convergence is not None)
         self.fitting.convergence = convergence
         self.fitting.logz = logz
-        self.fitting.dlogz = dlogz
+        self.fitting.stopping_criterion = stopping_criterion
         self.shared.updated_convergence = now_string()
         self.shared.convergence_available = convergence is not None
 
