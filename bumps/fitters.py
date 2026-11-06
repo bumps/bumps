@@ -1258,6 +1258,10 @@ class NestedSamplerFit(FitBase):
         if self.state is not None:
             self.state.show(figfile=output_path)
 
+    def save(self, output_path):
+        if self.state is not None:
+            self.state.save(output_path)
+
     def _best_sample(self):
         """
         Return the best sampled point and its cost.
@@ -2035,6 +2039,9 @@ def _build_fit_result(problem, webview_fit):
         labels=problem.labels(),
         numpoints=problem.model_points(),
         chisq=problem.chisq(nllf=fx),
+        # fitter specific scalar results, such as the evidence from a
+        # nested sampler; empty for fitters which don't provide any
+        extra_results=getattr(fit_state, "extra_results", {}),
         # webview FitResults
         state=fit_state,
         convergence=webview_fit.convergence,
@@ -2061,7 +2068,9 @@ def fit_result_summary(results: OptimizeResult) -> dict:
     fitted parameter labels, matching the order of x and dx), *numpoints*
     (number of data points) and *chisq* (normalized chi-squared at the best
     point, at full precision). For a model with gaussian independent
-    uncertainties the raw sum of squares is chisq*dof.
+    uncertainties the raw sum of squares is chisq*dof. *extra_results* holds
+    the scalar results particular to the fitter, such as the evidence from a
+    nested sampler, and is empty for fitters which don't provide any.
     """
     return {key: value for key, value in results.items() if key not in _FIT_RESULT_EXCLUDE_FIELDS}
 
@@ -2259,6 +2268,9 @@ def fit(
         numpoints=problem.model_points(),
         chisq=problem.chisq(nllf=fx),
         timestamp=now_string(),
+        # fitter specific scalar results, such as the evidence from a
+        # nested sampler; empty for fitters which don't provide any
+        extra_results=getattr(fit_state, "extra_results", {}),
         # webview FitResults
         state=fit_state,
         convergence=convergence,
