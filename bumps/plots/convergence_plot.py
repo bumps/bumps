@@ -3,7 +3,7 @@ import numpy as np
 
 TRIM_COLOR = "orange"
 BURN_COLOR = "red"
-LOGZ_COLOR = "purple"
+DLOGZ_COLOR = "purple"
 
 
 def convergence_plot(
@@ -13,7 +13,7 @@ def convergence_plot(
     trim_index: Optional[int] = None,
     burn_index: Optional[int] = None,
     max_points: Optional[int] = None,
-    logz: Optional[np.ndarray] = None,
+    dlogz: Optional[np.ndarray] = None,
 ) -> dict:
     """
     Generate a convergence plot from the convergence data.
@@ -32,8 +32,9 @@ def convergence_plot(
 
         max_points: Maximum number of points to draw per trace.
 
-        logz: Running estimate of the log evidence, one value per step of
-        *convergence*, or None to omit it.
+        dlogz: Running estimate of the log evidence still to be collected,
+        one value per step of *convergence*, or None to omit it. Steps where
+        the estimate is undefined are NaN and are drawn as gaps.
 
     Returns:
         A dictionary suitable for JSON serialization containing the plot data and layout.
@@ -51,9 +52,12 @@ def convergence_plot(
     x_out = x[tail::step]
     best_out = best[tail::step]
     pop_out = pop[tail::step, :]
-    # logz starts at step 1 like the rest, so plotly pairs it with x_out correctly
-    # even if the two histories differ in length by a step.
-    logz_out = None if logz is None else np.asarray(logz, "d")[tail::step]
+    # dlogz starts at step 1 like the rest, so plotly pairs it with x_out correctly
+    # even if the two histories differ in length by a step. JSON has no NaN, so
+    # the undefined steps are sent as null, which plotly draws as a gap.
+    dlogz_out = (
+        None if dlogz is None else [v if np.isfinite(v) else None for v in np.asarray(dlogz, "d")[tail::step]]
+    )
 
     # print(f"Convergence plot: {ni} steps, {npop} population, {nout} output, step={step}")
     traces = []
@@ -183,17 +187,17 @@ def convergence_plot(
             mode="lines",
         )
     )
-    if logz is not None:
+    if dlogz is not None:
         traces.append(
             dict(
                 type="scattergl",
                 x=x_out,
-                y=logz_out,
-                name="log <i>Z</i>",
-                line=dict(color=LOGZ_COLOR, width=1),
+                y=dlogz_out,
+                name="remaining Δlog <i>Z</i>",
+                line=dict(color=DLOGZ_COLOR, width=1),
                 mode="lines",
                 yaxis="y2",
-                hovertemplate=hovertemplate.format(label="log Z"),
+                hovertemplate=hovertemplate.format(label="remaining Δlog Z"),
             )
         )
     layout.update(
@@ -221,15 +225,17 @@ def convergence_plot(
             )
         )
     )
-    if logz is not None:
-        # log Z does not share units with the normalized chisq, so it needs its own
-        # scale. Tint the axis to match the trace so it is clear which is which.
+    if dlogz is not None:
+        # Δlog Z does not share units with the normalized chisq, so it needs its own
+        # scale. Tint the axis to match the trace so it is clear which is which. It
+        # falls by orders of magnitude towards the stopping threshold, so use log.
         layout.update(
             dict(
                 yaxis2=dict(
-                    title={"text": "log <i>Z</i>", "font": {"color": LOGZ_COLOR}},
-                    tickfont={"color": LOGZ_COLOR},
-                    linecolor=LOGZ_COLOR,
+                    title={"text": "remaining Δlog <i>Z</i>", "font": {"color": DLOGZ_COLOR}},
+                    type="log",
+                    tickfont={"color": DLOGZ_COLOR},
+                    linecolor=DLOGZ_COLOR,
                     overlaying="y",
                     side="right",
                     showline=True,
