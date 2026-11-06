@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref } from "vue";
 import * as mpld3 from "mpld3";
 import * as Plotly from "plotly.js/lib/core";
 import { v4 as uuidv4 } from "uuid";
-import type { TableData } from "./CSVTable.vue";
-import CSVTable from "./CSVTable.vue";
+import { nextTick, onMounted, ref } from "vue";
 import type { AsyncSocket } from "../asyncSocket";
 import { configWithSVGDownloadButton } from "../plotly_extras";
 import { setupDrawLoop } from "../setupDrawLoop";
+import type { TableData } from "./CSVTable.vue";
+import CSVTable from "./CSVTable.vue";
 
 type PlotInfo = { title: string; change_with: string; model_index: number };
 // const title = "Custom";

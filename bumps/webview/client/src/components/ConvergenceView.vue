@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, watchEffect } from "vue";
 import * as Plotly from "plotly.js/lib/core";
+import { ref, watchEffect } from "vue";
 import { shared_state } from "../app_state.ts";
 import type { AsyncSocket } from "../asyncSocket.ts";
 import { configWithSVGDownloadButton } from "../plotly_extras";

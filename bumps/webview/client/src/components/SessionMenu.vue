@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import DropDown from "./DropDown.vue";
-import { fileBrowser, shared_state } from "../app_state";
 import type { FileBrowserSettings } from "../app_state";
+import { fileBrowser, shared_state } from "../app_state";
 import type { AsyncSocket } from "../asyncSocket";
+import DropDown from "./DropDown.vue";
 
 // const title = "Session";
 const props = defineProps<{

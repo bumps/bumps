@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref } from "vue";
 import * as Plotly from "plotly.js/lib/core";
 import Heatmap from "plotly.js/lib/heatmap";
+import { ref } from "vue";
 import type { AsyncSocket } from "../asyncSocket.ts";
 import { configWithSVGDownloadButton } from "../plotly_extras";
 import { setupDrawLoop } from "../setupDrawLoop";

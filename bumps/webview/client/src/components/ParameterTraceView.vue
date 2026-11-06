@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref, shallowRef } from "vue";
 import * as Plotly from "plotly.js/lib/core";
 import type { Socket } from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
+import { onMounted, ref, shallowRef } from "vue";
 import { configWithSVGDownloadButton } from "../plotly_extras";
 import { setupDrawLoop } from "../setupDrawLoop";
 
