@@ -1406,10 +1406,10 @@ async def get_parameter_labels():
 @register
 async def get_parameter_trace_plot(var: int):
     fit_state = state.fitting.fit_state
+    import time
+
     # TODO: parallel tempering has a different trace plot
     if isinstance(fit_state, MCMCDraw):
-        import time
-
         start_time = time.time()
         logger.info(f"queueing new parameter_trace plot... {start_time}")
 
@@ -1424,6 +1424,23 @@ async def get_parameter_trace_plot(var: int):
             alpha=0.4,
         )
 
+        logger.info(f"time to render but not serialize... {time.time() - start_time}")
+        dfig = fig.to_dict()
+        end_time = time.time()
+        logger.info(f"time to draw parameter_trace plot: {end_time - start_time}")
+        return to_json_compatible_dict(dfig)
+    elif hasattr(fit_state, "results"):  # elif isinstance(fit_state, NestedDraw):
+        results = fit_state.results
+        start_time = time.time()
+        logger.info(f"queueing new nested trace plot... {start_time}")
+
+        results_dict = {
+            "samples": results["samples"][:, var],
+            "logvol": results["logvol"],
+            "importance_weights": results.importance_weights(),
+            "samples_id": results["samples_id"],
+        }
+        fig = plot_nested_trace(results_dict, connect=True)
         logger.info(f"time to render but not serialize... {time.time() - start_time}")
         dfig = fig.to_dict()
         end_time = time.time()
