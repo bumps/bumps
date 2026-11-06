@@ -1139,15 +1139,20 @@ class NestedSamplerFit(FitBase):
 
         If the generic --parallel/--threads mapper machinery
         (:class:`bumps.mapper.MPMapper` or :class:`bumps.mapper.ThreadPoolMapper`)
-        has already started a pool for this fit, reuse its worker count (and,
-        for threads, the pool itself - safe since threads share memory with
-        the main process and need no serialization). For multiprocessing, a
-        dedicated :class:`NestedSamplerPool` is created instead of reusing
-        MPMapper's pool directly, since dynesty needs its own worker-side
-        function cache (see :class:`NestedSamplerPool`); it is shut down again
-        once the fit completes, and MPMapper's own pool is left untouched.
+        has already started a pool for this fit, reuse its worker count. For
+        multiprocessing, a dedicated :class:`NestedSamplerPool` is created
+        instead of reusing MPMapper's pool directly, since dynesty needs its
+        own worker-side function cache (see :class:`NestedSamplerPool`); it is
+        shut down again once the fit completes, and MPMapper's own pool is
+        left untouched. For threads, the pool itself is reused directly (no
+        serialization needed, since threads share memory), but with thread-local
+        copies of the problem (see :func:`bumps.mapper.dynesty_thread_functions`)
+        rather than ``self.log_likelihood``/``self.prior_transform`` - those
+        are bound to the single shared ``self.problem``, and dynesty calls
+        them directly from each worker thread, which would otherwise race to
+        mutate and read back results from that shared problem.
         """
-        from .mapper import MPMapper, ThreadPoolMapper, NestedSamplerPool
+        from .mapper import MPMapper, ThreadPoolMapper, NestedSamplerPool, dynesty_thread_functions
 
         if MPMapper.pool is not None:
             njobs = getattr(MPMapper.pool, "_processes", None)
@@ -1158,7 +1163,8 @@ class NestedSamplerFit(FitBase):
         if ThreadPoolMapper.pool is not None:
             pool = ThreadPoolMapper.pool
             njobs = getattr(pool, "_max_workers", None)
-            yield pool, self.log_likelihood, self.prior_transform, njobs
+            loglike, prior_transform = dynesty_thread_functions(self.problem)
+            yield pool, loglike, prior_transform, njobs
             return
 
         yield None, self.log_likelihood, self.prior_transform, None

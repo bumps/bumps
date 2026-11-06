@@ -361,6 +361,43 @@ class ThreadPoolMapper(BaseMapper):
             # when threads are destroyed
 
 
+def _TP_dynesty_cache(problem, problem_id):
+    """Return this thread's private copy of *problem*, as in :func:`_TP_run_problem`."""
+    thread_local = threading.current_thread()
+    if getattr(thread_local, "ns_problem_id", None) != problem_id:
+        thread_local.ns_problem_id = problem_id
+        thread_local.ns_problem_copy = copy.deepcopy(problem)
+    return thread_local.ns_problem_copy
+
+
+def dynesty_thread_functions(problem):
+    """
+    Return (loglike, prior_transform) callables safe to call concurrently from
+    multiple worker threads of :class:`ThreadPoolMapper`'s pool.
+
+    dynesty calls the sampler's loglikelihood/prior_transform functions
+    directly rather than routing them through ThreadPoolMapper's own
+    mapper() wrapper, so without this, worker threads would concurrently
+    mutate (setp) and read back results from the single shared *problem* -
+    a real race once the GIL no longer serializes it (free-threaded Python).
+    As in :func:`_TP_run_problem`, each thread instead keeps its own deep
+    copy, tagged with ThreadPoolMapper's current problem id so a later fit
+    on a different problem invalidates stale copies.
+    """
+    problem_id = ThreadPoolMapper.problem_id
+
+    def loglike(x):
+        local_problem = _TP_dynesty_cache(problem, problem_id)
+        local_problem.setp(x)
+        return -local_problem.model_nllf()
+
+    def prior_transform(u):
+        local_problem = _TP_dynesty_cache(problem, problem_id)
+        return [parameter.prior.put01(ui) for ui, parameter in zip(u, local_problem.parameters)]
+
+    return loglike, prior_transform
+
+
 def _MPI_set_problem(problem, comm, root=0):
     pickled_problem = dumps(problem) if comm.rank == root else None
     pickled_problem = comm.bcast(pickled_problem, root=root)
