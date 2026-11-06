@@ -157,6 +157,7 @@ BUMPS_PACKAGE = "bumps"
 BUMPS_MODULES = [
     # ('__init__', 'Top level namespace'),
     ("api", "Web application interface"),
+    ("bayes", "Samples from a Bayesian posterior distribution"),
     ("bounds", "Parameter constraints"),
     ("bspline", "B-Spline interpolation library"),
     # ('caller_name', 'Identify the caller of the function'),
@@ -180,6 +181,7 @@ BUMPS_MODULES = [
     # ('mpfit', 'Levenberg-Marquardt with bounds'),  # docstrings don't use rst
     ("names", "External interface"),
     ("nested", "Nested sampling with bumps models"),
+    ("nested_sampling", "Samples from a nested sampling posterior"),
     ("options", "Command line options processor"),
     ("parameter", "Optimization parameter definition"),
     ("partemp", "Parallel tempering optimizer"),
