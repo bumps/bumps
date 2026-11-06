@@ -503,3 +503,85 @@ class MPIMapper(BaseMapper):
         # Set problem=None to stop the program.
         show_performance(MPIMapper.timestamps)
         MPIMapper.start_mapper(None, None)
+
+
+class _NestedSamplerWorker:
+    """Per-worker cache of the deserialized problem, set up by :func:`_init_nested_sampler_worker`."""
+
+    problem = None
+
+
+def _init_nested_sampler_worker(serialized, method):
+    from .state import deserialize_problem_bytes
+
+    problem = deserialize_problem_bytes(serialized, method)
+    problem.model_reset()
+    _NestedSamplerWorker.problem = problem
+
+
+def _nested_sampler_worker_loglike(x):
+    problem = _NestedSamplerWorker.problem
+    problem.setp(x)
+    return -problem.model_nllf()
+
+
+def _nested_sampler_worker_prior_transform(u):
+    problem = _NestedSamplerWorker.problem
+    return [parameter.prior.put01(ui) for ui, parameter in zip(u, problem.parameters)]
+
+
+class NestedSamplerPool:
+    """
+    Process pool for :class:`dynesty.DynamicNestedSampler`, modeled on
+    :class:`dynesty.pool.Pool`.
+
+    A plain :class:`multiprocessing.Pool` pickles the log-likelihood and
+    prior-transform *functions* on every call, which means pickling the bound
+    method together with the whole fit problem using the standard *pickle*
+    module. That fails for problems built from a model script, which
+    routinely contain lambdas and other objects standard pickle can't handle.
+
+    Instead, following the same fallback chain bumps uses elsewhere to save
+    sessions (JSON "dataclass" serialization first, then cloudpickle), the
+    problem is serialized once and each worker reconstructs its own copy at
+    startup via the pool initializer. Calls to :meth:`map` then only need to
+    pickle the sample points, using lightweight module-level functions that
+    look the reconstructed problem up from the worker-local cache.
+    """
+
+    def __init__(self, problem, njobs):
+        self.problem = problem
+        self.njobs = njobs
+        self.pool = None
+        self.loglike = _nested_sampler_worker_loglike
+        self.prior_transform = _nested_sampler_worker_prior_transform
+
+    def __enter__(self):
+        import multiprocessing as mp
+
+        from .state import serialize_problem_bytes
+
+        try:
+            serialized, method = serialize_problem_bytes(self.problem, "dataclass"), "dataclass"
+        except Exception:
+            serialized, method = serialize_problem_bytes(self.problem, "cloudpickle"), "cloudpickle"
+
+        ctx = mp.get_context("spawn")
+        self.pool = ctx.Pool(self.njobs, _init_nested_sampler_worker, (serialized, method))
+        # Also set up the cache in the main process, e.g. for sampler restore.
+        _init_nested_sampler_worker(serialized, method)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.pool is not None:
+            self.pool.terminate()
+            self.pool.join()
+            self.pool = None
+
+    def map(self, func, points):
+        return self.pool.map(func, points, chunksize=1)
+
+    @property
+    def size(self):
+        return self.njobs
+
