@@ -1102,9 +1102,14 @@ class DreamFit(FitBase):
 class NestedSamplerFit(FitBase):
     """
     A nested sampler fitter.
+
+    The *pop* option sets the number of live points. In its relative form it is
+    limited below by :attr:`MIN_POP`; a negative *pop* is used as given.
     """
     name = "Nested Sampling"
     id = "ns"
+    # lower bound for relative population so we get decent posteriors on small problems
+    MIN_POP = 500
     settings = [("steps", 20000),
                 ("pop", 100),
                 ("dlogz", 0.01),
@@ -1153,7 +1158,7 @@ class NestedSamplerFit(FitBase):
 
         # the number of live points is only needed by the constructor
         ndim = len(self.parameters)
-        nlive = _population_size(options["pop"], ndim)
+        nlive = self._nlive(options, ndim)
         self.nested_sampler = DynamicNestedSampler(
             self.log_likelihood,
             self.prior_transform,
@@ -1271,13 +1276,24 @@ class NestedSamplerFit(FitBase):
         return np.asarray(sampler.live_v), -np.asarray(sampler.live_logl)
 
     @classmethod
+    def _nlive(cls, options: Dict[str, Any], num_fitparams: int) -> int:
+        """
+        Return the number of live points for the given options, which is the
+        population size for *pop*, with the relative form limited below by
+        :attr:`MIN_POP`.
+        """
+        nlive = _population_size(options["pop"], num_fitparams)
+        # negative pop is used to mean 'absolute pop rather than relative'
+        return max(nlive, cls.MIN_POP) if options["pop"] > 0 else nlive
+
+    @classmethod
     def max_steps(cls, problem: "bumps.fitproblem.FitProblem", options: Optional[Dict[str, Any]] = None) -> int:
         """
         Return the maximum number of steps the fitter will take based on
         the given options.
         """
         options = _fill_defaults(options, cls.settings)
-        nlive = _population_size(options["pop"], len(problem.getp()))
+        nlive = cls._nlive(options, len(problem.getp()))
         # steps only bounds the sampling iterations. Once it is reached the
         # sampler wraps up by yielding the remaining live points one at a
         # time, followed by a final iteration
