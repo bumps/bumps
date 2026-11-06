@@ -276,6 +276,13 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
     n_gen, n_chain, n_var = dream.population.shape
     n_pop = n_gen * n_chain
 
+    if dream.CR is None and dream.state is not None:
+        # A new Dream instance is created for each fit/resume. Keep both the
+        # learned weights and the cumulative adaptation statistics with the draw.
+        from copy import deepcopy
+
+        dream.CR = deepcopy(getattr(dream.state, "_crossover", None))
+
     if dream.CR is None:
         if dream.CR_spacing == "log":
             dream.CR = LogAdaptiveCrossover(n_var)
@@ -288,6 +295,7 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
     # Record initial state
     allocate_state(dream)
     state = dream.state
+    state._crossover = dream.CR
     # Reset plot portion to 100% during fitting so that the intermediate plots show the
     # full set of samples.
     state.portion = 1.0
