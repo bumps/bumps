@@ -1,3 +1,4 @@
+import { fileURLToPath, URL } from "node:url";
 import vue from "@vitejs/plugin-vue";
 import { defineConfig } from "vite";
 import svgLoader from "vite-svg-loader";
@@ -6,6 +7,11 @@ import svgLoader from "vite-svg-loader";
 export default defineConfig({
   plugins: [vue(), svgLoader()],
   base: "",
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
+  },
   define: {
     // By default, Vite doesn't include shims for NodeJS.
     // Plotly fails to load without this shim.

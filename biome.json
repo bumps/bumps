@@ -4,6 +4,13 @@
   "files": {
     "includes": ["**", "!**/package.json"]
   },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
