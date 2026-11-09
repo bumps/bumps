@@ -1,10 +1,10 @@
-"""Optional Matplotlib adapters for Bumps sensitivity scans.
+"""Optional Matplotlib adapters for Bumps profile liklehood scans.
 
 This module is deliberately separate from the numerical scanner core.
 Install matplotlib only if static plots are required.
 
 The function names and scan data conventions mirror
-``sensitivity_plot``.
+``profile_liklehood_plot_plotly.py``.
 """
 
 from __future__ import annotations
