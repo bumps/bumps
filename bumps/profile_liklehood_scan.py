@@ -30,7 +30,7 @@ import numpy as np
 from scipy.optimize import minimize
 
 
-class SensitivityScanner:
+class ProfileLiklehoodScanner:
     """Profile one varying parameter in a Bumps ``FitProblem``.
 
     Parameters
