@@ -1,4 +1,4 @@
-"""Optional Plotly adapters for Bumps sensitivity scans.
+"""Optional Plotly adapters for Bumps profile liklehood scans.
 
 This module is deliberately separate from the numerical scanner core.
 Install plotly only if interactive plots are required.
