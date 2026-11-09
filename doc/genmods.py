@@ -180,7 +180,6 @@ BUMPS_MODULES = [
     ("mono", "Freeform - Monotonic Spline"),
     # ('mpfit', 'Levenberg-Marquardt with bounds'),  # docstrings don't use rst
     ("names", "External interface"),
-    ("nested", "Nested sampling with bumps models"),
     ("nested_sampling", "Samples from a nested sampling posterior"),
     ("options", "Command line options processor"),
     ("parameter", "Optimization parameter definition"),
