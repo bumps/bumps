@@ -156,6 +156,11 @@ FIT_FIELDS = dict(
     outliers=("Outliers", ChoiceList("none", "iqr", "grubbs", "mahal")),
     starts=("Starts", parse_int),
     jump=("Jump radius", float),
+    dlogz=("Evidence tolerance", float),
+    pfrac=("Posterior/evidence weight", float),
+    n_effective=("Target effective samples", parse_int),
+    bound_method=("Bounding method", ChoiceList("none", "single", "multi", "balls", "cubes")),
+    sample_method=("Sampling method", ChoiceList("auto", "unif", "rwalk", "slice", "rslice")),
 )
 
 # Make sure all settings are parseable

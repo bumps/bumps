@@ -19,6 +19,7 @@ dependencies = [
     'mpld3',
     'msgpack',
     'uncertainties',
+    'dynesty',
 ]
 classifiers = [
     'Development Status :: 4 - Beta',

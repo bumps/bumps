@@ -28,6 +28,7 @@ from numpy.typing import NDArray
 
 if TYPE_CHECKING:
     from h5py import Group
+    from bumps.bayes import BayesDraw
     from bumps.dream.state import MCMCDraw
 
 
@@ -912,6 +913,22 @@ def map_labels(labels: list, old_labels: list) -> list:
     return pairs
 
 
+def _set_problem_vars(state: "BayesDraw", problem):
+    """
+    Copy the derived, visible and integer variable settings from *problem*.
+    """
+    # TODO: Serialize derived/visible/integer variable support with fitproblem.
+    # TODO: Use parameter expressions for derived vars rather than a function.
+    # TODO: Allow fixed parameters as part of the derived variable function.
+    derive, labels = getattr(problem, "derive_vars", (None, None))
+    if derive is not None:
+        state.set_derived_vars(derive, labels=labels)
+    if (visible := getattr(problem, "visible_vars", None)) is not None:
+        state.set_visible_vars(visible)
+    if (integer := getattr(problem, "integer_vars", None)) is not None:
+        state.set_integer_vars(integer)
+
+
 class DreamFit(FitBase):
     name = "DREAM"
     id = "dream"
@@ -996,19 +1013,7 @@ class DreamFit(FitBase):
         # self.state.keep_best()
         self.state.title = self.problem.name
 
-        # TODO: Add derived/visible/integer variable support to other optimizers.
-        # TODO: Serialize derived/visible/integer variable support with fitproblem.
-        # TODO: Use parameter expressions for derived vars rather than a function.
-        # TODO: Allow fixed parameters as part of the derived variable function.
-        fn, labels = getattr(self.problem, "derive_vars", (None, None))
-        if fn is not None:
-            self.state.set_derived_vars(fn, labels=labels)
-        visible_vars = getattr(self.problem, "visible_vars", None)
-        if visible_vars is not None:
-            self.state.set_visible_vars(visible_vars)
-        integer_vars = getattr(self.problem, "integer_vars", None)
-        if integer_vars is not None:
-            self.state.set_integer_vars(integer_vars)
+        _set_problem_vars(self.state, self.problem)
 
         x, fx = self.state.best()
 
@@ -1023,15 +1028,7 @@ class DreamFit(FitBase):
         return self.state.entropy(**kw)
 
     def stderr(self):
-        """
-        Approximate standard error as 1/2 the 68% interval fo the sample,
-        which is a more robust measure than the mean of the sample for
-        non-normal distributions.
-        """
-        from .dream.stats import var_stats
-
-        vstats = var_stats(self.state.draw())
-        return np.array([(v.p68[1] - v.p68[0]) / 2 for v in vstats], "d")
+        return self.state.stderr()
 
     # def cov(self):
     #    # Covariance estimate from final 1000 points
@@ -1092,13 +1089,259 @@ class DreamFit(FitBase):
         steps = options["steps"]
         if steps == 0:  # Steps not specified; using samples instead
             pop, draws = options["pop"], options["samples"]
-            pop_size = int(np.ceil(pop * num_fitparams)) if pop > 0 else int(-pop)
+            pop_size = _population_size(pop, num_fitparams)
             steps = (draws + pop_size - 1) // pop_size
         steps += options["burn"]  # add burn-in steps
         DE_steps = Dream.DE_steps  # DreamFit does not override DE_steps, uses default
         steps = int(np.ceil((steps - 1) / DE_steps)) * DE_steps + 1  # round up to multiple of DE_steps
         return steps
 
+class NestedSamplerFit(FitBase):
+    """
+    A nested sampler fitter.
+
+    The *pop* option sets the number of live points. In its relative form it is
+    limited below by :attr:`MIN_POP`; a negative *pop* is used as given.
+    """
+    name = "Nested Sampling"
+    id = "ns"
+    # lower bound for relative population so we get decent posteriors on small problems
+    MIN_POP = 500
+    settings = [("steps", 20000),
+                ("pop", 100),
+                ("dlogz", 0.01),
+                ("pfrac", 0.0),
+                ("n_effective", 10000),
+                ("bound_method", "multi"),
+                ("sample_method", "auto")]
+
+    def __init__(self, problem):
+        self.problem = problem
+        self.problem.model_reset()
+
+        self.state = None
+        self.results = None
+        # best (point, cost) seen by the monitors so far
+        self._best_point = None
+        self._best_value = np.inf
+
+        self.parameters = self.problem.parameters
+
+        self.nested_sampler = None
+
+    def log_likelihood(self, x):
+        """
+        Calculate the log-likelihood of the model.
+        """
+        # Note: this is only using nllf from experiment;
+        # parameter_nllf is handled implicitly by prior_transform
+        # and constraints_nllf is added to the final best value at the end
+        self.problem.setp(x)
+        return -self.problem.model_nllf()
+
+    def prior_transform(self, u):
+        """Transform the parameter space to the unit hypercube."""
+        return [parameter.prior.put01(u[i]) for i, parameter in enumerate(self.parameters)]
+
+    def solve(self, monitors: MonitorRunner, mapper=None, **options):
+        """
+        Fit the problem using nested sampling.
+        """
+        from dynesty import DynamicNestedSampler
+        from dynesty.dynamicsampler import stopping_function, weight_function
+
+        options = _fill_defaults(options, self.settings)
+        steps = options["steps"]
+        # arguments for stopping criteria 
+        stop_args = {
+            "pfrac": options["pfrac"],
+            "evid_thresh": options["dlogz"],
+            "target_n_effective": options["n_effective"],
+        }
+
+        # the number of live points is only needed by the constructor
+        ndim = len(self.parameters)
+        nlive = self._nlive(options, ndim)
+        self.nested_sampler = DynamicNestedSampler(
+            self.log_likelihood,
+            self.prior_transform,
+            ndim,
+            nlive=nlive,
+            bound=options["bound_method"],
+            sample=options["sample_method"],
+        )
+
+        niter = 0
+        aborted = monitors.stopping()
+
+        # baseline initial sampling
+        if not aborted:
+            for _ in self.nested_sampler.sample_initial(dlogz=options["dlogz"], maxiter=steps):
+                niter += 1
+                self.update(monitors, niter)
+                if monitors.stopping():
+                    aborted = True
+                    break
+
+        if niter == 0:
+            # restore starting point as we have no data
+            x = self.problem.getp()
+            return x, self.problem.nllf(x)
+
+        self.results = self.nested_sampler.results
+
+        # sample in batches until the stopping criterion is reached
+        # maxiter is per call, so we need to remove iters as we run
+        while not aborted and niter < steps:
+            if stopping_function(self.nested_sampler.results, args=stop_args):  # evaluate stop
+                break
+            logl_bounds = weight_function(self.nested_sampler.results)  # derive bounds
+            for _ in self.nested_sampler.sample_batch(logl_bounds=logl_bounds, maxiter=steps - niter):
+                niter += 1
+                self.update(monitors, niter)
+                # Check for user abort or fit timeout. The partial batch is
+                # discarded (it is not combined into the saved run) since its
+                # weights are only correct once the batch is complete.
+                if monitors.stopping():
+                    aborted = True
+                    break
+            if aborted:
+                break
+            self.nested_sampler.combine_runs()  # add new samples to previous results
+            self.results = self.nested_sampler.results
+
+        # Note: on abort self.results holds the samples from the initial run plus
+        # any completed batches, so it is not updated from the sampler here.
+        if not aborted:
+            self.results = self.nested_sampler.results
+
+        x, fx = self._best_sample()
+        self.state = monitors.history.fit_state = self._build_draw(best=(x, -fx))
+        return x, fx
+
+    def _build_draw(self, best):
+        """
+        Return the posterior sample as a :class:`~bumps.nested_sampling.NestedDraw`.
+
+        *best* is the best *(point, log likelihood)* of the complete objective,
+        which need not be in the sample.
+        """
+        from dynesty.utils import resample_equal
+
+        from .nested_sampling import NestedDraw
+
+        results = self.results
+        # Nested sampling returns unequally weighted points ordered by increasing
+        # likelihood. Resample to equal weight to get the unordered posterior
+        # sample that the plots and statistics expect, keeping each likelihood
+        # with its point.
+        index = resample_equal(
+            np.arange(len(results.logl)),
+            results.importance_weights(),
+            rstate=self.nested_sampler.rstate,
+        )
+        draw = NestedDraw(
+            points=results.samples[index],
+            logp=results.logl[index],
+            labels=self.problem.labels(),
+            title=self.problem.name,
+            best=best,
+            results=results,
+        )
+        _set_problem_vars(draw, self.problem)
+        return draw
+
+    def stderr(self):
+        return None if self.state is None else self.state.stderr()
+
+    def plot(self, output_path):
+        if self.state is not None:
+            self.state.show(figfile=output_path)
+
+    def _best_sample(self):
+        """
+        Return the best sampled point and its cost.
+        """
+        # because we sample from the prior distribution, we only use the model likelihood
+        # in the sampler - so we need to re-add the parameter and constraints prior to
+        # get the complete objective function 
+        samples = self.results.samples
+        # the sampling likelihood is -model_nllf. Keep it separate from the
+        # prior so that the prior is not counted twice.
+        model_nllf = -np.asarray(self.results.logl)
+
+        cost = np.empty(len(samples), "d")
+        for k, x in enumerate(samples):
+            self.problem.setp(x)
+            pparameter, bad_priors = self.problem.parameter_nllf()
+            pconstraints, bad_constraints = self.problem.constraints_nllf()
+            failing = bad_priors + bad_constraints
+            # match FitProblem.nllf: the model cost is replaced by the penalty
+            # when the point is infeasible.
+            penalty = self.problem.penalty_nllf if failing else model_nllf[k]
+            cost[k] = pparameter + pconstraints + penalty
+        cost[np.isnan(cost)] = np.inf
+
+        x = samples[np.argmin(cost)]
+        # score the chosen point with the complete objective.
+        return x, self.problem.nllf(x)
+
+    def update(self, monitors: MonitorRunner, step: int):
+        """
+        Send one iteration of the sampler to the monitors.
+
+        The reported point is the best point seen so far rather than the
+        worst live point that the sampler just discarded.
+        """
+        population_points, population_values = self._live_points()
+        # The live points are all better than the points already removed from
+        # the sampler, so the best point of the run is among them. A batch only
+        # explores a slice of the likelihood though, so keep the best seen over
+        # all the batches rather than just the best of the current live set.
+        k = np.argmin(population_values)
+        if self._best_point is None or population_values[k] < self._best_value:
+            self._best_point = np.array(population_points[k], "d")
+            self._best_value = population_values[k]
+        monitors.update(
+            step=step,
+            point=self._best_point,
+            value=self._best_value,
+            population_points=population_points,
+            population_values=population_values,
+        )
+
+    def _live_points(self):
+        """
+        Return (points, cost) for the live points of the sampler.
+        """
+        sampler = self.nested_sampler.batch_sampler
+        if sampler is None:
+            sampler = self.nested_sampler.sampler
+        return np.asarray(sampler.live_v), -np.asarray(sampler.live_logl)
+
+    @classmethod
+    def _nlive(cls, options: Dict[str, Any], num_fitparams: int) -> int:
+        """
+        Return the number of live points for the given options, which is the
+        population size for *pop*, with the relative form limited below by
+        :attr:`MIN_POP`.
+        """
+        nlive = _population_size(options["pop"], num_fitparams)
+        # negative pop is used to mean 'absolute pop rather than relative'
+        return max(nlive, cls.MIN_POP) if options["pop"] > 0 else nlive
+
+    @classmethod
+    def max_steps(cls, problem: "bumps.fitproblem.FitProblem", options: Optional[Dict[str, Any]] = None) -> int:
+        """
+        Return the maximum number of steps the fitter will take based on
+        the given options.
+        """
+        options = _fill_defaults(options, cls.settings)
+        nlive = cls._nlive(options, len(problem.getp()))
+        # steps only bounds the sampling iterations. Once it is reached the
+        # sampler wraps up by yielding the remaining live points one at a
+        # time, followed by a final iteration
+        return options["steps"] + nlive + 1
 
 class Resampler(FitBase):
     # TODO: why isn't cli.resynth using this?
@@ -1435,6 +1678,15 @@ def _fill_defaults(options: Optional[Dict[str, Any]], settings: List[Tuple[str, 
     return result
 
 
+def _population_size(pop: float, num_fitparams: int) -> int:
+    """
+    Returns the population size for the *pop* option: *pop* times the number of
+    fitted parameters, or -*pop* independent of the number of parameters if
+    *pop* is negative.
+    """
+    return int(np.ceil(pop * num_fitparams)) if pop > 0 else int(-pop)
+
+
 FITTERS: list[FitBase] = []
 FIT_AVAILABLE_IDS: list[str] = []
 FIT_ACTIVE_IDS: list[str] = []
@@ -1470,6 +1722,7 @@ register(DreamFit)
 register(BFGSFit)
 register(MPFit)
 register(PTFit, active=False)
+register(NestedSamplerFit)
 # register(PSFit, active=False)
 # register(RLFit, active=False)
 # register(LevenbergMarquardtFit, active=True)
@@ -2076,12 +2329,13 @@ def save_fit(
     state.write_session_file(path)
 
 
-def test_fitters():
+def test_fitters(subtests):
     """
     Run the fit tests to make sure they work.
     """
     from .curve import Curve
     from .fitproblem import FitProblem
+    from numpy.testing import assert_allclose
 
     x = [1, 2, 3, 4, 5, 6]
     y = [2.1, 4.0, 6.3, 8.03, 9.6, 11.9]
@@ -2101,6 +2355,11 @@ def test_fitters():
     fit_error_tol = 1e-3
     expected_value = [1.106e-1, 1.970]
     expected_error = [5.799e-2, 2.055e-2]
+    # Nested sampling returns the best *sampled* point rather than an optimum
+    # so it is a little away from the true minimum; 
+    # Relative to the intercept (0.11 +/- 0.06) that is a few parts in 1000,
+    # so it needs a looser tolerance on the values than the optimizers do.
+    fitter_tols = {"ns": 1e-2}
 
     store = None
     export = None
@@ -2111,18 +2370,22 @@ def test_fitters():
     # export = "/tmp/testexport"
     # verbose = True
     # parallel = 0 # Parallel fit
-    for fitter_name in FIT_ACTIVE_IDS:
-        # print(f"Running {fitter_name}")
-        result = fit(
-            problem,
-            method=fitter_name,
-            verbose=verbose,
-            store=store,
-            export=export,
-            parallel=parallel,
-            name=fitter_name,
-        )
-        assert np.allclose(result.x, expected_value, rtol=fit_value_tol)
-        if fitter_name != "dream":
-            # dream error bars vary too much to test
-            assert np.allclose(result.dx, expected_error, rtol=fit_error_tol)
+    for i, fitter_name in enumerate(FIT_ACTIVE_IDS):
+        with subtests.test(msg=fitter_name, i=i):
+            result = fit(
+                problem,
+                method=fitter_name,
+                verbose=verbose,
+                store=store,
+                export=export,
+                parallel=parallel,
+                name=fitter_name,
+            )
+            # get tolerance for fitters with exceptions
+            value_tol = fitter_tols.get(fitter_name, fit_value_tol)
+            assert_allclose(result.x, expected_value, rtol=value_tol)
+            if fitter_name not in ("dream", "ns"):
+                # The samplers take their error bars from the posterior sample
+                # rather than from the curvature at the optimum, so they vary
+                # too much to test.
+                assert_allclose(result.dx, expected_error, rtol=fit_error_tol)
