@@ -73,6 +73,18 @@ This algorithms can be called from the command line as follows::
 Some fitters save the complete state of the fitter on termination so that
 the fit can be resumed.  Use ``--resume`` to resume from DREAM or DE.
 
+DREAM retains the learned crossover weights and adaptation statistics when
+resuming in memory, from an HDF5 session, or from an exported chain. Older
+files remain readable, but do not contain these statistics and start with
+fresh crossover adaptation. Explicitly supplying a crossover object to the
+standalone ``Dream`` sampler overrides the saved crossover. Custom crossover
+implementations are retained in memory; file persistence supports the built-in
+fixed, adaptive and log-adaptive crossover classes.
+
+This does not make resumed sampling identical to a single longer run: random
+number generator state and the timing of convergence and outlier checks are
+not preserved.
+
 See :ref:`optimizer-guide` for a description of the available optimizers, and
 :ref:`option-guide` for a description of all the bumps options.
 

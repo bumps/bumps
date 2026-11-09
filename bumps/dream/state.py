@@ -78,6 +78,7 @@ __all__ = ["MCMCDraw", "Draw", "dream_load", "h5load", "h5dump"]
 import os.path
 import re
 import gzip
+import json
 from typing import List, Dict, TextIO, Tuple, Union, Optional, Callable
 from pathlib import Path
 import warnings
@@ -87,6 +88,7 @@ import numpy as np
 from numpy import empty, sum, asarray, inf, argmax, hstack, dstack
 from numpy import loadtxt, savetxt, reshape
 from numpy.typing import NDArray
+from .crossover import _get_state as _crossover_state, _from_state as _restore_crossover
 
 from .convergence import burn_point
 from .outliers import identify_outliers
@@ -230,6 +232,11 @@ def h5dump(group: "Group", state: "MCMCDraw"):
             except Exception as exc:
                 exc.args = (f"{exc.args[0]} while writing {field}",) + exc.args[1:]
                 raise
+    crossover = _crossover_state(getattr(state, "_crossover", None))
+    if crossover is not None:
+        # A one-element byte-string array is also readable by older loaders,
+        # which ignore fields they do not recognize.
+        _h5_write_field(group, "crossover_state", np.asarray([json.dumps(crossover)], dtype="S"))
 
 
 def h5load(group: "Group"):
@@ -260,6 +267,8 @@ def h5load(group: "Group"):
 
     # Create empty draw and fill it with loaded data
     state = MCMCDraw(0, 0, 0, 0, 0, 0, thinning)
+    if hasattr(Fields, "crossover_state"):
+        state._crossover = _restore_crossover(json.loads(Fields.crossover_state[0]))
     state.portion = portion
     state.draws = Ngen * Npop
     state.labels = [label.decode() for label in Fields.labels]
@@ -349,6 +358,9 @@ def save_state(state: "MCMCDraw", filename: str):
     # trace.write("writing stats\n")
     fid = CREATE(filename + "-stats" + EXT, "wb")
     fid.write(f"# draws {Ncr}*CR_weight\n".encode())
+    crossover = _crossover_state(getattr(state, "_crossover", None))
+    if crossover is not None:
+        fid.write(("# crossover " + json.dumps(crossover) + "\n").encode())
     savetxt(fid, stats)
     fid.close()
     # trace.write("done state save\n")
@@ -456,6 +468,11 @@ def load_state(filename: str, skip=0, report=0, derived_vars=0):
     # Read stats file
     with openmc(filename + "-stats" + EXT) as fd:
         stats_header = fd.readline()
+        crossover_header = fd.readline()
+        crossover = (
+            json.loads(crossover_header[len("# crossover ") :]) if crossover_header.startswith("# crossover ") else None
+        )
+        fd.seek(0)
         stats = loadtxt_with_fallback(fd)
 
     # Determine number of R-stat stored in the stats file
@@ -477,6 +494,8 @@ def load_state(filename: str, skip=0, report=0, derived_vars=0):
 
     # Create empty draw and fill it with loaded data
     state = MCMCDraw(0, 0, 0, 0, 0, 0, thinning)
+    if crossover is not None:
+        state._crossover = _restore_crossover(crossover)
     # print("gen, var, pop", Ngen, Nvar, Npop)
     state.portion = 1.0
     state.draws = Ngen * Npop
@@ -633,6 +652,7 @@ class MCMCDraw(object):
 
         # Total number of draws so far
         self.draws = 0
+        self._crossover = None
         self.portion = 1.0
 
         # Maximum observed likelihood

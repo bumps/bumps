@@ -204,3 +204,33 @@ def distance_per_CR(available_CRs: NDArray, distances: NDArray, used: NDArray):
     total = np.asarray([np.sum(distances[used == p]) for p in available_CRs])
     count = np.asarray([np.sum(used == p) for p in available_CRs])
     return count, total
+
+
+def _get_state(crossover):
+    """Return portable state for the built-in crossover implementations."""
+    if type(crossover) not in (Crossover, AdaptiveCrossover, LogAdaptiveCrossover):
+        return None
+    state = dict(kind=type(crossover).__name__, CR=crossover.CR.tolist(), weight=crossover.weight.tolist())
+    if isinstance(crossover, BaseAdaptiveCrossover):
+        state.update(
+            count=crossover._count.tolist(),
+            distance=crossover._distance.tolist(),
+            generations=crossover._generations,
+            Nchains=crossover._Nchains,
+        )
+    return state
+
+
+def _from_state(state):
+    """Restore without recalculating the crossover grid from its dimensions."""
+    classes = {cls.__name__: cls for cls in (Crossover, AdaptiveCrossover, LogAdaptiveCrossover)}
+    cls = classes[state["kind"]]
+    crossover = cls.__new__(cls)
+    crossover.CR = np.asarray(state["CR"], dtype="d")
+    crossover.weight = np.asarray(state["weight"], dtype="d")
+    if isinstance(crossover, BaseAdaptiveCrossover):
+        crossover._count = np.asarray(state["count"], dtype="d")
+        crossover._distance = np.asarray(state["distance"], dtype="d")
+        crossover._generations = state["generations"]
+        crossover._Nchains = state["Nchains"]
+    return crossover
