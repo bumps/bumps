@@ -58,6 +58,7 @@ from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .fitproblem import Fitness, FitProblem, load_problem, load_pars, fitness_chisq_str
 from .fitters import FitDriver, OptimizeResult, FIT_DEFAULT_ID, FIT_ACTIVE_IDS, save_fit_result
 from .logger import logger
+from .nested_sampling import NestedDraw
 from .mapper import MPMapper
 from .parameter import Parameter, Constant, Variable, unique
 from .dream.stats import var_stats
@@ -1431,7 +1432,7 @@ async def get_parameter_trace_plot(var: int):
         end_time = time.time()
         logger.info(f"time to draw parameter_trace plot: {end_time - start_time}")
         return to_json_compatible_dict(dfig)
-    elif hasattr(fit_state, "results"):  # elif isinstance(fit_state, NestedDraw):
+    elif isinstance(fit_state, NestedDraw):
         results = fit_state.results
         start_time = time.time()
         logger.info(f"queueing new nested trace plot... {start_time}")
