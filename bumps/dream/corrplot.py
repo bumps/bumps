@@ -34,13 +34,19 @@ class Corr2d(object):
         self.N = len(data)
         self.labels = labels
         self.data = data
+        # Weighted samples (e.g., from importance sampling) pass weights to histogram2d.
+        self.weights = kw.get("weights", None)
         self.hists = _hists(data, **kw)
         # for k, v in self.hists.items():
         #    print k, (v[1][0], v[1][-1]), (v[2][0], v[2][-1])
         self.ax = None  # will be set on plot
 
     def R(self):
-        return np.corrcoef(self.data)
+        if self.weights is None:
+            return np.corrcoef(self.data)
+        C = np.cov(self.data, aweights=self.weights)
+        d = np.sqrt(np.diag(C))
+        return C / np.outer(d, d)
 
     def __getitem__(self, key):
         """

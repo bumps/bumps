@@ -31,9 +31,10 @@ def plot_all(state: MCMCDraw | Draw, portion: Optional[float] = None, figfile=No
         state = draw.state
     all_vstats = var_stats(draw)
     print(format_vars(all_vstats))
-    print(
-        f"\nStatistics and plots based on {len(draw.points)} samples ({int(100 * draw.portion)}% of total samples drawn)"
-    )
+    if draw.weights is None:
+        print(
+            f"\nStatistics and plots based on {len(draw.points)} samples ({int(100 * draw.portion)}% of total samples drawn)"
+        )
     if figfile is not None:
         save_vars(all_vstats, figfile + "-err.json")
 
@@ -53,12 +54,17 @@ def plot_all(state: MCMCDraw | Draw, portion: Optional[float] = None, figfile=No
     if figfile is not None:
         plt.savefig(figfile + "-vars" + figext)
 
+    # Traces and convergence only apply to Markov chains, not to independent
+    # samples such as those from importance sampling.
+    is_mcmc = isinstance(state, MCMCDraw)
+
     # parameter traces
-    plt.figure()
-    plot_traces(draw.state, portion=draw.portion, vars=draw.vars)
-    plt.suptitle("Parameter history" + (" for " + draw.title if draw.title else ""))
-    if figfile is not None:
-        plt.savefig(figfile + "-trace" + figext)
+    if is_mcmc:
+        plt.figure()
+        plot_traces(draw.state, portion=draw.portion, vars=draw.vars)
+        plt.suptitle("Parameter history" + (" for " + draw.title if draw.title else ""))
+        if figfile is not None:
+            plt.savefig(figfile + "-trace" + figext)
 
     # Acceptance rate
     if False:
@@ -68,12 +74,13 @@ def plot_all(state: MCMCDraw | Draw, portion: Optional[float] = None, figfile=No
             plt.savefig(figfile + "-acceptance" + figext)
 
     # convergence plot
-    plt.figure()
-    plot_logp(draw.state, portion=draw.portion)
-    if draw.title:
-        plt.suptitle(draw.title)
-    if figfile is not None:
-        plt.savefig(figfile + "-logp" + figext)
+    if is_mcmc:
+        plt.figure()
+        plot_logp(draw.state, portion=draw.portion)
+        if draw.title:
+            plt.suptitle(draw.title)
+        if figfile is not None:
+            plt.savefig(figfile + "-logp" + figext)
 
     # correlation plot
     if draw.Nvar <= CORRPLOT_MAXVAR:
@@ -84,8 +91,8 @@ def plot_all(state: MCMCDraw | Draw, portion: Optional[float] = None, figfile=No
         if figfile is not None:
             plt.savefig(figfile + "-corr" + figext)
 
-    # parallel coordinates plot
-    if draw.Nvar > 1:
+    # parallel coordinates plot (draws every point alike, so it ignores weights)
+    if draw.Nvar > 1 and draw.weights is None:
         from . import parcoord
 
         plt.figure()
@@ -98,7 +105,7 @@ def plot_all(state: MCMCDraw | Draw, portion: Optional[float] = None, figfile=No
 
 def plot_corrmatrix(draw, nbins=50, vstats=None, full=False, fig=None):
     ranges = None if vstats is None or full else [v.p95_range for v in vstats]
-    c = corrplot.Corr2d(draw.points.T, bins=nbins, ranges=ranges, labels=draw.labels)
+    c = corrplot.Corr2d(draw.points.T, bins=nbins, ranges=ranges, labels=draw.labels, weights=draw.weights)
     c.plot(fig=fig)
     # print "Correlation matrix\n",c.R()
 

@@ -45,4 +45,4 @@ for p in M.parameters().values():
     p.range(-200, 200)
     # p.range(-inf,inf)
 
-problem = bp.arccoshFitProblem(M)
+problem = bp.FitProblem(M)
