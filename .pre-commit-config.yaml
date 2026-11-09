@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/biomejs/pre-commit
-    rev: bc3c1d9acd69eaa1e5912f282ca563f914fd78d3 # v2.6.4 (tag pins @biomejs/biome to the same version)
+    rev: 19865851e014cbe6138e295365f95ca51bf953f8 # v0.6.1
     hooks:
       - id: biome-check
         files: \.(vue|js|ts|mjs|tsx|jsx|json)$
