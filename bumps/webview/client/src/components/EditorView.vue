@@ -9,7 +9,14 @@
         <button type="button" class="btn btn-danger btn-sm me-2" @click="content = DEFAULT_CONTENT">Reset</button>
       </div>
       <div>
-        <small>Script Editor</small>
+        <button
+          type="button"
+          class="btn btn-success btn-sm"
+          @click="processScript"
+          v-tooltip="'Send the script to the backend for processing'"
+        >
+          Process
+        </button>
       </div>
     </div>
     <div id="code-wrapper" style="padding: 0.5rem; height: calc(100% - 2rem); width: 100%;">
@@ -23,6 +30,7 @@ import { editor as monacoEditor } from "monaco-editor";
 import { CodeEditor } from "monaco-editor-vue3";
 import { computed, ref, watch } from "vue";
 import { theme } from "@/app_state";
+import "@/global/monaco";
 
 // CodeEditor only reads `theme` on creation, so push changes via setTheme.
 const monacoTheme = computed(() => (theme.value === "dark" ? "vs-dark" : "vs"));
@@ -67,6 +75,11 @@ function uploadFile() {
     }
   };
   input.click();
+}
+
+function processScript() {
+  // Placeholder for sending content to backend
+  console.log("Sending content to backend:", content.value);
 }
 </script>
 
