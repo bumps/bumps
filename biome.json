@@ -1,8 +1,15 @@
 {
   "root": true,
-  "$schema": "https://biomejs.dev/schemas/2.6.5/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.6/schema.json",
   "files": {
     "includes": ["**", "!**/package.json"]
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
   },
   "formatter": {
     "enabled": true,

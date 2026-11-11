@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref } from "vue";
 import Bar from "plotly.js/lib/bar";
 import * as Plotly from "plotly.js/lib/core";
 import { v4 as uuidv4 } from "uuid";
+import { ref } from "vue";
 import type { AsyncSocket } from "../asyncSocket.ts";
 import { cache } from "../plot_cache";
 import { configWithSVGDownloadButton } from "../plotly_extras";

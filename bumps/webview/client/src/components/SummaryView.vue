@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import TagFilter from "./ParameterTagFilter.vue";
 import type { AsyncSocket } from "../asyncSocket.ts";
 import { setupDrawLoop } from "../setupDrawLoop";
+import TagFilter from "./ParameterTagFilter.vue";
 
 const title = "Summary";
 
