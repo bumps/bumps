@@ -1119,7 +1119,7 @@ def load_problem(
         data = path.read_bytes()
         problem = deserialize_problem_bytes(data, method)
     # TODO: what is problem.path when we are deserializing from a session file?
-    problem.path = str(path.resolve())
+    problem.path = str(path.expanduser().resolve())
     if not getattr(problem, "name", None):
         problem.name = path.stem
     if not getattr(problem, "title", None):
@@ -1150,7 +1150,7 @@ def _load_script_from_path(
             problem = _load_script(filename, args=args)
     # Note: keeping problem.script_path separate from problem.path because
     # the problem.path may be the result of deserializing the model.
-    problem.script_path = str(path.resolve())
+    problem.script_path = str(path.expanduser().resolve())
     problem.script_args = args
     return problem
 
@@ -1177,7 +1177,7 @@ def _load_script(
     if args is None:
         args = ()
 
-    script_path = Path(path).resolve()
+    script_path = Path(path).expanduser().resolve()
 
     # Turn filename into a python identifier
     name = script_path.stem.split(".", 1)[0]
