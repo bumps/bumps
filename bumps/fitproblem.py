@@ -48,6 +48,7 @@ __all__ = ["Fitness", "FitProblem", "CovarianceMixin", "load_problem"]
 
 from contextlib import contextmanager
 from dataclasses import dataclass
+import importlib.abc
 import logging
 import re
 import sys
@@ -354,6 +355,7 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
     weights: util.Union[util.List[float], util.Literal[None]]
     constraints: util.Optional[util.Sequence[parameter.Constraint]]
     penalty_nllf: util.Union[float, util.Literal["inf"]]
+    sources: dict[str, str]
 
     # The type is not quite correct. The models do not need to be of the same class
     _models: util.List[FitnessType]
@@ -887,7 +889,7 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
             if self.num_models > 1:
                 chisq_str = fitness_chisq_str(f)
                 chisq = f"χ² = {chisq_str}; overall {overall_chisq_str}"
-                title = f"Model {i+1}: {f.name}"
+                title = f"Model {i + 1}: {f.name}"
             else:
                 chisq = f"χ² = {overall_chisq_str}"
                 title = f"{f.name}"
@@ -1122,15 +1124,16 @@ def _load_script_from_path(path: Path | str, args: list[str] | None = None):
         # Try a specialized model loader
         problem = plugin.load_model(filename)
         if problem is None:
-            problem = _load_script(filename, options=args)
+            problem = _load_script(filename, args=args)
     # Note: keeping problem.script_path separate from problem.path because
     # the problem.path may be the result of deserializing the model.
     problem.script_path = str(path.resolve())
     problem.script_args = args
+    problem.script_content = path.read_text()
     return problem
 
 
-def _load_script(filename, options=None) -> FitProblem:
+def _load_script(filename, args=None, sources: dict[str, str] | None = None) -> FitProblem:
     """
     Load a problem definition from a python script file.
 
@@ -1144,66 +1147,77 @@ def _load_script(filename, options=None) -> FitProblem:
     """
     import re
     from pathlib import Path
-    from hashlib import md5
-    from importlib.machinery import SourceFileLoader
-    from importlib.util import module_from_spec, spec_from_loader
+
+    if args is None:
+        args = ()
 
     script_path = Path(filename).resolve()
-    if options is None:
-        options = ()
 
     # Turn filename into a python identifier
     name = script_path.stem.split(".", 1)[0]
     name = "_".join(name.split())  # convert whitespace
     name = re.sub(r"[^a-zA-Z0-9_]", "_", name)  # handle invalid characters
-    if name[0].isdigit():  # idnetifiers can't start with a digit
+    if name[0].isdigit():  # identifiers can't start with a digit
         name = "_" + name
 
     # Put all user scripts in the bumps.user namespace.
     # They shouldn't conflict because they don't show up
     # in sys.modules.
     package = "bumps.user"
-
-    # Create the module for the script
     fullname = f"{package}.{name}"
-    loader = SourceFileLoader(fullname, str(script_path))
-    spec = spec_from_loader(fullname, loader)
-    module = module_from_spec(spec)
+
+    # TODO: preserve the script filename in sources
+    # TODO: include data files in the session file, along with scripts
+    # Use preloaded sources or read them from the filesystem. The name of
+    # script file in the preloads may be different from the incoming filename.
+    # For example, spin-valve.refl1d will be translated to spin_valve.py
+    sources = sources.copy() if sources else {}
+    if f"{name}.py" not in sources:
+        sources[f"{name}.py"] = script_path.read_text()
 
     # Execute the script
     # TODO: Enable relative imports with ScriptFinder
     old_argv = sys.argv
     old_bytecode = sys.dont_write_bytecode
-    # meta_path_finder = ScriptFinder(script_path.parent, package)
+    script_finder = ScriptFinder(script_path.parent, package, sources=sources)
     try:
-        # sys.meta_path.insert(0, meta_path_finder)
-        sys.argv = [filename, *options]
+        sys.meta_path.insert(0, script_finder)
+        sys.argv = [filename, *args]
         sys.dont_write_bytecode = True  # Suppress .pyc creation
-        loader.exec_module(module)
+        module = importlib.import_module(fullname)
     finally:
-        # sys.meta_path.pop(0)
+        sys.meta_path.pop(0)
         sys.argv = old_argv
         sys.dont_write_bytecode = old_bytecode
 
     problem = getattr(module, "problem", None)
     if problem is None:
         raise ValueError(filename + " requires 'problem = FitProblem(...)'")
+    problem.sources = script_finder.sources
 
-    # # Capture the source code and any dependent libraries. On deserialize we
-    # # will need to preload the libs and stuff them in sys.modules before
-    # # calling dill. Be sure to remove them immediately so that the next load
-    # # from script will get the latest version (the user may have changed the
-    # # support libraries without having changed the script).
-    # # Note that we won't be able to rerun the script because we aren't capturing
-    # # the original datafiles, but we may want to show it to the user.
-    # script = script_path.read_text()
-    # context = dict(script=script, libs=meta_path_finder.sources, options=options)
+    # Cloud pickle seems to work for objects that aren't part of sys.modules.
+    script_finder.clear_loaded_modules()
 
     return problem
 
 
-# Note: Not currently used
-class ScriptFinder:
+class SourceStringLoader(importlib.abc.Loader):
+    def __init__(self, fullname, source, origin):
+        self.fullname = fullname
+        self.origin = origin
+        self.source = source
+
+    def create_module(self, spec):
+        return None
+
+    def exec_module(self, module):
+        module.__file__ = self.origin
+        module.__cached__ = None
+        code = compile(self.source, self.origin, "exec")
+        exec(code, module.__dict__)
+
+
+class ScriptFinder(importlib.abc.MetaPathFinder):
     """
     sys.meta_path finder allowing relative imports in scripts.
 
@@ -1216,34 +1230,43 @@ class ScriptFinder:
     saved problem.
     """
 
-    def __init__(self, script_dir, package_name):
+    def __init__(self, script_dir, package_name, sources=None):
         from importlib.machinery import ModuleSpec
 
-        self._path = script_dir
+        self._path = Path(script_dir) if script_dir else Path("/virtual") / package_name.replace(".", "/")
         self._package = package_name + "."
         self._parent_spec = ModuleSpec(package_name, None, is_package=True)
-        self.sources = {}
+        self.sources = {} if sources is None else sources  # TODO: make a copy?
+        self.clear_loaded_modules()
 
-    def find_spec(self, fullname, path, target=None):
-        from importlib.machinery import SourceFileLoader
+    def clear_loaded_modules(self):
+        for name in list(sys.modules):
+            if name.startswith(self._package):
+                del sys.modules[name]
+
+    def find_spec(self, full_name, path, target=None):
         from importlib.util import spec_from_loader
 
-        if fullname == self._package[:-1]:
+        if full_name == self._package[:-1]:
             # print(f'import looking for {fullname}')
             return self._parent_spec
-        if fullname.startswith(self._package):
-            # print(f'import looking for {fullname}')
-            module_name = fullname.split(".")[-1]
-            module_path = self._path / f"{module_name}.py"
-            if module_path.exists():
-                loader = SourceFileLoader(fullname, str(module_path))
-                spec = spec_from_loader(fullname, loader)
-                # It is inefficient to load this twice, but the import
-                # hook machinery is too complicated to capture the source
-                # when it is loaded. Similarly for suppressing the .pyc
-                # file creation.
-                self.sources[fullname] = module_path.read_text()
-                return spec
+        if full_name.startswith(self._package):
+            # TODO: allow helper packages as well as helper modules
+            # To check for packages use name/__init__.py instead of name.py
+            rel_name = full_name.removeprefix(self._package)
+            rel_path = rel_name + ".py"
+            source = self.sources.get(rel_path)
+            if source is None:
+                full_path = self._path / rel_path
+                # print(f'import is looking for {full_name} in {full_path}')
+                if full_path.exists():
+                    self.sources[rel_path] = source = full_path.read_text()
+                else:
+                    raise ImportError(f"{full_path} does not exist when importing from .{rel_name}")
+            source = self.sources[rel_path]
+            loader = SourceStringLoader(full_name, source=source, origin=str(rel_path))
+            spec = spec_from_loader(full_name, loader)
+            return spec
         return None
 
 
