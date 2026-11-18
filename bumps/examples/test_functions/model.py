@@ -20,7 +20,7 @@ import sys
 import numpy as np
 
 import bumps.names as bp
-from model_lib import select_function, plot2d
+from .model_lib import select_function, plot2d
 
 
 USAGE = "Give the name of the model followed by dimension (default=2)"
