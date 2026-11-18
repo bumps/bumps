@@ -6,20 +6,21 @@ Adapted from https://github.com/joshspeagle/dynesty/blob/master/py/dynesty/plott
 __all__ = ["plot_nested_trace"]
 
 import numpy as np
+from numpy.typing import NDArray
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from scipy.ndimage import gaussian_filter as norm_kde
 from scipy.stats import gaussian_kde
-from dynesty.utils import quantile as _quantile
-from dynesty.utils import get_random_generator, resample_equal
 
 
-def check_span(span, samples, weights):
+def check_span(span: list[float | tuple[float, float]], samples: NDArray, weights: NDArray):
     """
     If span is a list of scalars, replace it by the list of bounds.
     If the input is list of pairs, it is kept intact
     """
+    from dynesty.utils import quantile
+
     for i, _ in enumerate(span):
         try:
             iter(span[i])
@@ -27,33 +28,33 @@ def check_span(span, samples, weights):
                 raise ValueError("Incorrect span value")
         except TypeError:
             q = [0.5 - 0.5 * span[i], 0.5 + 0.5 * span[i]]
-            span[i] = _quantile(samples[i], q, weights=weights)
+            span[i] = quantile(samples[i], q, weights=weights)
 
 
 def plot_nested_trace(
-    results,
-    span=None,
-    quantiles=(0.025, 0.5, 0.975),
-    smooth=0.02,
-    thin=1,
-    dims=None,
-    post_color="blue",
-    kde=True,
-    nkde=1000,
-    trace_cmap="plasma",
-    trace_color=None,
-    connect=False,
-    connect_highlight=10,
-    connect_color="red",
-    show_titles=True,
-    title_quantiles=(0.025, 0.5, 0.975),
+    results: dict,
+    span: list[float | tuple[float, float]] | None = None,
+    quantiles: tuple[float, ...] = (0.025, 0.5, 0.975),
+    smooth: float | int | list[float | int] = 0.02,
+    thin: int = 1,
+    dims: list[int] | None = None,
+    post_color: str = "blue",
+    kde: bool = True,
+    nkde: int = 1000,
+    trace_cmap: str = "plasma",
+    trace_color: str | None = None,
+    connect: bool = False,
+    connect_highlight: int | list[int] = 10,
+    connect_color: str = "red",
+    show_titles: bool = True,
+    title_quantiles: tuple[float, ...] = (0.025, 0.5, 0.975),
 ):
     """
     Plot traces and marginalized posteriors for each parameter.
 
     Args:
-        results (dict) : The results from a nested sampling run.
-        span (iterable, optional) : A list where each element is either a length-2 tuple containing
+        results : The results from a nested sampling run.
+        span : A list where each element is either a length-2 tuple containing
             lower and upper bounds or a float from `(0., 1.]` giving the
             fraction of (weighted) samples to include. If a fraction is provided,
             the bounds are chosen to be equal-tailed. An example would be::
@@ -61,48 +62,49 @@ def plot_nested_trace(
                 span = [(0., 10.), 0.95, (5., 6.)]
 
             Default is `0.999999426697` (5-sigma credible interval) for each parameter.
-        quantiles (iterable, optional) : A list of fractional quantiles to overplot on the
+        quantiles : A list of fractional quantiles to overplot on the
             1-D marginalized posteriors as vertical dashed lines. Default is `[0.025, 0.5, 0.975]`
             (the 95%/2-sigma credible interval).
-        smooth (float or iterable, optional) : The standard deviation (either a single value or
+        smooth : The standard deviation (either a single value or
             a different value for each subplot) for the Gaussian kernel used to smooth the 1-D
             marginalized posteriors, expressed as a fraction of the span.
             Default is `0.02` (2% smoothing). If an integer is provided instead,
             this will instead default to a simple (weighted) histogram with `bins=smooth`.
-        thin (int, optional) : Thin the samples so that only each `thin`-th sample is plotted.
+        thin : Thin the samples so that only each `thin`-th sample is plotted.
             Default is `1` (no thinning).
-        dims (iterable, optional) : The subset of dimensions that should be plotted.
+        dims : The subset of dimensions that should be plotted.
             If not provided, all dimensions will be shown.
-        post_color (str, optional) : A color (either a single color or a different
+        post_color : A color (either a single color or a different
             value for each subplot) used when plotting the histograms. Default is `'blue'`.
-        kde (bool, optional) : Whether to use kernel density estimation to estimate and plot
+        kde : Whether to use kernel density estimation to estimate and plot
             the PDF of the importance weights as a function of log-volume (as opposed to the
             importance weights themselves). Default is `True`.
-        nkde (int, optional) : The number of grid points used when plotting the kernel density estimate.
+        nkde : The number of grid points used when plotting the kernel density estimate.
             Default is `1000`.
-        trace_cmap (str, optional) : A colormap used when plotting the traces,
+        trace_cmap : A colormap used when plotting the traces,
             Default is `'plasma'`.
-        trace_color (str, optional) : A color used when plotting the traces. This overrides the `trace_cmap`
+        trace_color : A color used when plotting the traces. This overrides the `trace_cmap`
             option by giving all points the same color.
             Default is `None` (not used).
-        connect (bool, optional) : Whether to draw lines connecting the paths of unique particles.
+        connect : Whether to draw lines connecting the paths of unique particles.
             Default is `False`.
-        connect_highlight (int or iterable, optional) : If `connect=True`, highlights the paths
+        connect_highlight : If `connect=True`, highlights the paths
             of a specific set of particles. If an integer is passed, :data:`connect_highlight`
             random particle paths will be highlighted. If an iterable is passed,
             then the particle paths corresponding to the provided indices will be highlighted.
-        connect_color (str, optional) : The color of the highlighted particle paths. Default is `'red'`.
-        show_titles (bool, optional) : Whether to display a title above each 1-D marginalized posterior
+        connect_color : The color of the highlighted particle paths. Default is `'red'`.
+        show_titles : Whether to display a title above each 1-D marginalized posterior
             showing the 0.5 quantile along with the upper/lower bounds associated
             with the 0.025 and 0.975 (95%/2-sigma credible interval) quantiles.
             Default is `True`.
-        title_quantiles (iterable, optional) : A list of fractional quantiles to use in the title.
+        title_quantiles : A list of fractional quantiles to use in the title.
             Default is `[0.025, 0.5, 0.975]` (median plus 95%/2-sigma credible interval).
 
     Returns:
         plotly.graph_objects.Figure : Output trace plot.
 
     """
+    from dynesty.utils import get_random_generator, resample_equal, quantile
 
     # Set defaults.
     rstate = get_random_generator()
@@ -253,13 +255,13 @@ def plot_nested_trace(
             fig.update_yaxes(range=[0.0, max(y0) * 1.05], row=i + 1, col=2)
         # Plot quantiles.
         if quantiles is not None and len(quantiles) > 0:
-            qs = _quantile(x, quantiles, weights=weights)
+            qs = quantile(x, quantiles, weights=weights)
             for q in qs:
                 fig.add_vline(x=q, line_width=2, line_dash="dash", line_color=color, row=i + 1, col=2)
 
         # Set titles.
         if show_titles:
-            ql, qm, qh = _quantile(x, title_quantiles, weights=weights)
+            ql, qm, qh = quantile(x, title_quantiles, weights=weights)
             q_minus, q_plus = qm - ql, qh - qm
             fmt = "{0:.2f}".format
             title = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
