@@ -355,7 +355,6 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
     weights: util.Union[util.List[float], util.Literal[None]]
     constraints: util.Optional[util.Sequence[parameter.Constraint]]
     penalty_nllf: util.Union[float, util.Literal["inf"]]
-    sources: dict[str, str]
 
     # The type is not quite correct. The models do not need to be of the same class
     _models: util.List[FitnessType]
@@ -364,6 +363,11 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
     _parameters_by_id: util.Dict[str, Parameter]
     _dof: float = np.nan  # not a schema field, and is not used in __init__
     _active_model_index: int = 0
+
+    # Don't serialize sources within the problem because we won't see them if the
+    # problem is pickled. Instead, store them as a private attribute, and have the
+    # session manager store them in a separate field in the fit problem group.
+    _sources: dict[str, str] = None
     # _all_constraints: util.List[util.Union[Parameter, Expression]]
 
     def __init__(
@@ -399,6 +403,14 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
         # Do these steps last so that it has all of the attributes initialized.
         self.model_reset()  # sets self._all_constraints
         self.set_active_model(0)  # Set the active model to model 0
+
+    @property
+    def sources(self):
+        return self._sources
+
+    @sources.setter
+    def sources(self, _sources):
+        self._sources = _sources
 
     @property
     def fitness(self):
@@ -1078,7 +1090,11 @@ def nllf_scale(dof: int, npars: int, norm: bool = True):
         return 2.0 / scale, chi2.ppf(ONE_SIGMA, npars) / scale
 
 
-def load_problem(path: Path | str, args: list[str] | None = None):
+def load_problem(
+    path: Path | str,
+    args: list[str] | None = None,
+    sources: dict[str, str] | None = None,
+) -> FitProblem:
     """
     Load a model file.
 
@@ -1087,6 +1103,9 @@ def load_problem(path: Path | str, args: list[str] | None = None):
 
     *args* are any additional arguments to the model.  The sys.argv
     variable will be set such that *sys.argv[1:] == args*.
+
+    *sources* is an optional dictionary of python filenames to module source
+    code.
     """
     from .state import SERIALIZER_EXTENSIONS, deserialize_problem_bytes
 
@@ -1094,7 +1113,7 @@ def load_problem(path: Path | str, args: list[str] | None = None):
     table = {f".{ext}": method for method, ext in SERIALIZER_EXTENSIONS.items()}
     method = table.get(path.suffix, "script")
     if method == "script":
-        problem = _load_script_from_path(path, args)
+        problem = _load_script_from_path(path, args, sources)
     else:
         # export saved data as binary with encoding utf-8
         data = path.read_bytes()
@@ -1111,7 +1130,11 @@ def load_problem(path: Path | str, args: list[str] | None = None):
     return problem
 
 
-def _load_script_from_path(path: Path | str, args: list[str] | None = None):
+def _load_script_from_path(
+    path: Path | str,
+    args: list[str] | None = None,
+    sources: dict[str, str] | None = None,
+) -> FitProblem:
     from .util import pushdir
     from . import plugin
 
@@ -1129,11 +1152,14 @@ def _load_script_from_path(path: Path | str, args: list[str] | None = None):
     # the problem.path may be the result of deserializing the model.
     problem.script_path = str(path.resolve())
     problem.script_args = args
-    problem.script_content = path.read_text()
     return problem
 
 
-def _load_script(filename, args=None, sources: dict[str, str] | None = None) -> FitProblem:
+def _load_script(
+    path: Path | str,
+    args: list[str] | None = None,
+    sources: dict[str, str] | None = None,
+) -> FitProblem:
     """
     Load a problem definition from a python script file.
 
@@ -1151,7 +1177,7 @@ def _load_script(filename, args=None, sources: dict[str, str] | None = None) -> 
     if args is None:
         args = ()
 
-    script_path = Path(filename).resolve()
+    script_path = Path(path).resolve()
 
     # Turn filename into a python identifier
     name = script_path.stem.split(".", 1)[0]
@@ -1182,7 +1208,7 @@ def _load_script(filename, args=None, sources: dict[str, str] | None = None) -> 
     script_finder = ScriptFinder(script_path.parent, package, sources=sources)
     try:
         sys.meta_path.insert(0, script_finder)
-        sys.argv = [filename, *args]
+        sys.argv = [path, *args]
         sys.dont_write_bytecode = True  # Suppress .pyc creation
         module = importlib.import_module(fullname)
     finally:
@@ -1192,7 +1218,7 @@ def _load_script(filename, args=None, sources: dict[str, str] | None = None) -> 
 
     problem = getattr(module, "problem", None)
     if problem is None:
-        raise ValueError(filename + " requires 'problem = FitProblem(...)'")
+        raise ValueError(path + " requires 'problem = FitProblem(...)'")
     problem.sources = script_finder.sources
 
     # Cloud pickle seems to work for objects that aren't part of sys.modules.
