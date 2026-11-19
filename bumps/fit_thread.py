@@ -173,6 +173,10 @@ class DreamMonitor(monitor.Monitor):
         """
         Close out the monitor
         """
+        # Re-read the state: a fitter which replaces it rather than updating it
+        # in place has done so since the last call, so the state held here is
+        # one update behind the end of the fit.
+        self.fit_state = getattr(history, "fit_state", self.fit_state)
         evt = dict(
             message="uncertainty_final",
             time=self.time,

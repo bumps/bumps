@@ -1109,6 +1109,10 @@ class NestedSamplerFit(FitBase):
     id = "ns"
     # lower bound for relative population so we get decent posteriors on small problems
     MIN_POP = 500
+    #: Smallest interval in seconds between posterior updates during the run.
+    POSTERIOR_INTERVAL = 1.0
+    #: Largest share of the fit those updates are allowed to consume.
+    POSTERIOR_OVERHEAD = 0.05
     settings = [("steps", 20000),
                 ("pop", 100),
                 ("dlogz", 0.01),
@@ -1134,10 +1138,10 @@ class NestedSamplerFit(FitBase):
         # without one (as the nested sampler would re-seed on resume) so reproducable runs
         # would become impossible
         self._rng = np.random.default_rng()
-        # Number of samples in the last posterior update, and how often to
-        # update, both set when the run starts.
+        # Number of samples in the last posterior update, and the fit time at
+        # which the next one falls due.
         self._posterior_size = 0
-        self._posterior_interval = 1
+        self._next_posterior_time = 0.0
 
     def log_likelihood(self, x):
         """
@@ -1160,10 +1164,10 @@ class NestedSamplerFit(FitBase):
         from dynesty import DynamicNestedSampler
         from dynesty.dynamicsampler import stopping_function, weight_function
 
-        if self.state is not None:
-            # nested sampling resume restores posterior data from the sampling file, not state
-            logger.warning("nested sampling cannot resume a previous run; starting a new one")
-            self.state = None
+        from .nested_sampling import restore_run
+
+        previous = None if self.state is None else self.state.results
+        self.state = None
 
         options = _fill_defaults(options, self.settings)
         steps = options["steps"]
@@ -1187,14 +1191,21 @@ class NestedSamplerFit(FitBase):
         )
 
         # initial setup of posterior update data
-        self._posterior_interval = nlive
         self._posterior_size = 0
+        self._next_posterior_time = 0.0
 
         niter = 0
         aborted = monitors.stopping()
 
+        # Continue the stored run if there is one, which means picking up at
+        # the batches: *steps* then counts the iterations added to it rather
+        # than the iterations of the whole fit.
+        resumed = previous is not None and restore_run(self.nested_sampler, previous)
+        if previous is not None and not resumed:
+            logger.warning("the previous nested sampling run cannot be continued; starting a new one")
+
         # baseline initial sampling
-        if not aborted:
+        if not resumed and not aborted:
             for _ in self.nested_sampler.sample_initial(dlogz=options["dlogz"], maxiter=steps):
                 niter += 1
                 self.update(monitors, niter)
@@ -1202,7 +1213,7 @@ class NestedSamplerFit(FitBase):
                     aborted = True
                     break
 
-        if niter == 0:
+        if niter == 0 and not resumed:
             # restore starting point as we have no data
             x = self.problem.getp()
             return x, self.problem.nllf(x)
@@ -1231,10 +1242,9 @@ class NestedSamplerFit(FitBase):
             # add new batch to posterior save data
             self._update_posterior(monitors)
 
-        # Note: on abort self.results holds the samples from the initial run plus
-        # any completed batches, so it is not updated from the sampler here.
-        if not aborted:
-            self.results = self.nested_sampler.results
+        # On abort the partial batch is discarded, so this is the initial run
+        # plus any completed batches.
+        self.results = self._snapshot_results()
 
         # The run is complete only if it stopped because the sampler was
         # satisfied. Stopping on abort, timeout or the iteration cap leaves
@@ -1244,11 +1254,37 @@ class NestedSamplerFit(FitBase):
         self.state = monitors.history.fit_state = self._build_draw(best=(x, -fx), complete=complete)
         return x, fx
 
+    def _snapshot_results(self):
+        """
+        Return the run so far as a :class:`dynesty.utils.Results`.
+
+        While the initial run is in progress the sampler has only recorded its
+        dead points, whose weights carry almost none of the posterior mass: the
+        live points still cover the whole high likelihood core, so a sample
+        drawn from the dead points alone is a spike on a handful of values.
+        Dynesty folds the live points in when the initial run ends; do the same
+        for a snapshot taken before then, then put the sampler back as it was so
+        that sampling continues unaffected. add_final_live/_remove_live_points
+        is the pair dynesty itself uses to re-enter a finished run.
+        """
+        sampler = self.nested_sampler.sampler
+        # In a batch the run is frozen until combine_runs(), and once the
+        # initial run has ended dynesty has added the live points itself.
+        if self.nested_sampler.batch_sampler is not None or sampler.added_live:
+            return self.nested_sampler.results
+        sampler.add_final_live(print_progress=False)
+        try:
+            # Results copies the run out of the sampler, so it survives the
+            # live points being taken away again.
+            return sampler.results
+        finally:
+            sampler._remove_live_points()
+
     def _update_posterior(self, monitors: MonitorRunner):
         """
         Update posterior data with the runners for checkpointing.
         """
-        self.results = self.nested_sampler.results
+        self.results = self._snapshot_results()
         if len(self.results.logl) == self._posterior_size:
             # A batch in progress is not merged into the run until it
             # completes, so there is nothing new while it runs.
@@ -1364,10 +1400,18 @@ class NestedSamplerFit(FitBase):
             population_points=population_points,
             population_values=population_values,
         )
-        # Offset by one so that the first iteration updates: a run killed
-        # before the first live set is replaced should still leave a sample.
-        if step % self._posterior_interval == 1 % self._posterior_interval:
+        # Rebuild the posterior on a timer rather than an iteration count, so
+        # that the cadence follows the fit rather than the model. The first
+        # iteration is always due, so a run killed early still leaves a sample.
+        now = monitors.history.time[0]
+        if now >= self._next_posterior_time:
+            start = perf_counter()
             self._update_posterior(monitors)
+            # An update copies the whole run, so it grows with the sample. Back
+            # off when it gets expensive rather than letting it take over the
+            # fit.
+            cost = perf_counter() - start
+            self._next_posterior_time = now + max(self.POSTERIOR_INTERVAL, cost / self.POSTERIOR_OVERHEAD)
 
     def _live_points(self):
         """

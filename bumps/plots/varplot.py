@@ -188,9 +188,17 @@ def _decorate_histogram(vstats: "VarStats", fig: dict, subplot: int = 1):
 def _make_logp_histogram(values, logp, nbins, ci, weights, idx, cbar_edges, showscale=False, subplot=None):
     from numpy import ones_like, searchsorted, linspace, cumsum, diff, unique, argsort, array, hstack, exp
 
-    # TODO: what to do when the posterior width is zero?
     if ci[0] == ci[1]:
-        return
+        # The central 95% of the weight sits on one value. Widen the interval
+        # to the whole sample, or to a nominal span if that is a point too, so
+        # that the panel shows where the posterior collapsed to. Returning
+        # early here instead would leave it blank, which reads as a broken
+        # plot rather than as a fit with nothing to show yet.
+        lo, hi = values.min(), values.max()
+        if lo == hi:
+            pad = abs(lo) * 1e-3 or 1.0
+            lo, hi = lo - pad, hi + pad
+        ci = (lo, hi)
 
     if weights is None:
         weights = ones_like(logp)

@@ -92,12 +92,14 @@ class Corr2d(object):
         return fig
 
 
-def _plot(hists, labels, indices, show_ticks=None):
+def _count_range(hists, indices):
     """
-    Plot pair-wise correlation histograms
-    """
+    Return the (low, high) count range to colour the histograms over.
 
-    n = len(indices)
+    Empty cells are clipped up to *low*, so the range needs width even when
+    every pair of parameters lands in a single bin -- otherwise the whole plot
+    comes out one flat colour.
+    """
     vmin, vmax = float("inf"), float("-inf")
     for i, index in enumerate(indices[:-1]):
         for cross_index in indices[i + 1 :]:
@@ -107,6 +109,17 @@ def _plot(hists, labels, indices, show_ticks=None):
             if len(positive) > 0:
                 vmin = min(vmin, np.amin(positive))
                 vmax = max(vmax, np.amax(positive))
+    # A decade is enough to separate the one populated cell from the rest.
+    return (vmax / 10 if vmin >= vmax else vmin), vmax
+
+
+def _plot(hists, labels, indices, show_ticks=None):
+    """
+    Plot pair-wise correlation histograms
+    """
+
+    n = len(indices)
+    vmin, vmax = _count_range(hists, indices)
 
     fig = make_subplots(
         rows=n - 1, cols=n - 1, horizontal_spacing=0, vertical_spacing=0, shared_yaxes=True, shared_xaxes=True
@@ -179,15 +192,7 @@ def _plot_single_heatmap(hists, labels, indices, show_ticks=None):
     """
 
     n = len(indices)
-    vmin, vmax = float("inf"), float("-inf")
-    for i, index in enumerate(indices[:-1]):
-        for cross_index in indices[i + 1 :]:
-            ii, jj = sorted((index, cross_index))
-            data, _, _ = hists[(ii, jj)]
-            positive = data[data > 0]
-            if len(positive) > 0:
-                vmin = min(vmin, np.amin(positive))
-                vmax = max(vmax, np.amax(positive))
+    vmin, vmax = _count_range(hists, indices)
 
     fig = go.Figure()
     COLORSCALE = ["white", "yellow", "green", "blue", "red"]
