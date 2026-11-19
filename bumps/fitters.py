@@ -20,6 +20,7 @@ from . import initpop
 from . import lsqerror
 
 from .history import History
+from .logger import logger
 from .util import NDArray, format_duration, format_uncertainty, redirect_console
 
 # For typing
@@ -30,6 +31,7 @@ if TYPE_CHECKING:
     from h5py import Group
     from bumps.bayes import BayesDraw
     from bumps.dream.state import MCMCDraw
+    from bumps.nested_sampling import NestedDraw
 
 
 class ConsoleMonitor(monitor.TimedUpdate):
@@ -1128,6 +1130,14 @@ class NestedSamplerFit(FitBase):
         self.parameters = self.problem.parameters
 
         self.nested_sampler = None
+        # if we don't fix our rng, a run with checkpoints might behave differently to a run
+        # without one (as the nested sampler would re-seed on resume) so reproducable runs
+        # would become impossible
+        self._rng = np.random.default_rng()
+        # Number of samples in the last posterior update, and how often to
+        # update, both set when the run starts.
+        self._posterior_size = 0
+        self._posterior_interval = 1
 
     def log_likelihood(self, x):
         """
@@ -1150,9 +1160,14 @@ class NestedSamplerFit(FitBase):
         from dynesty import DynamicNestedSampler
         from dynesty.dynamicsampler import stopping_function, weight_function
 
+        if self.state is not None:
+            # nested sampling resume restores posterior data from the sampling file, not state
+            logger.warning("nested sampling cannot resume a previous run; starting a new one")
+            self.state = None
+
         options = _fill_defaults(options, self.settings)
         steps = options["steps"]
-        # arguments for stopping criteria 
+        # arguments for stopping criteria
         stop_args = {
             "pfrac": options["pfrac"],
             "evid_thresh": options["dlogz"],
@@ -1170,6 +1185,10 @@ class NestedSamplerFit(FitBase):
             bound=options["bound_method"],
             sample=options["sample_method"],
         )
+
+        # initial setup of posterior update data
+        self._posterior_interval = nlive
+        self._posterior_size = 0
 
         niter = 0
         aborted = monitors.stopping()
@@ -1209,22 +1228,44 @@ class NestedSamplerFit(FitBase):
                 break
             self.nested_sampler.combine_runs()  # add new samples to previous results
             self.results = self.nested_sampler.results
+            # add new batch to posterior save data
+            self._update_posterior(monitors)
 
         # Note: on abort self.results holds the samples from the initial run plus
         # any completed batches, so it is not updated from the sampler here.
         if not aborted:
             self.results = self.nested_sampler.results
 
+        # The run is complete only if it stopped because the sampler was
+        # satisfied. Stopping on abort, timeout or the iteration cap leaves
+        # the evidence a lower bound and the posterior short of its peak.
+        complete = not aborted and niter < steps
         x, fx = self._best_sample()
-        self.state = monitors.history.fit_state = self._build_draw(best=(x, -fx))
+        self.state = monitors.history.fit_state = self._build_draw(best=(x, -fx), complete=complete)
         return x, fx
 
-    def _build_draw(self, best):
+    def _update_posterior(self, monitors: MonitorRunner):
+        """
+        Update posterior data with the runners for checkpointing.
+        """
+        self.results = self.nested_sampler.results
+        if len(self.results.logl) == self._posterior_size:
+            # A batch in progress is not merged into the run until it
+            # completes, so there is nothing new while it runs.
+            return
+        self._posterior_size = len(self.results.logl)
+        # Note: this is the best model likelihood seen, not the best complete
+        # objective that _best_sample() returns at the end of the fit.
+        best = (self._best_point, -self._best_value)
+        self.state = monitors.history.fit_state = self._build_draw(best=best, complete=False)
+
+    def _build_draw(self, best, complete=True):
         """
         Return the posterior sample as a :class:`~bumps.nested_sampling.NestedDraw`.
 
         *best* is the best *(point, log likelihood)* of the complete objective,
-        which need not be in the sample.
+        which need not be in the sample. *complete* is False if the run was
+        still in progress when the sample was taken.
         """
         from dynesty.utils import resample_equal
 
@@ -1238,7 +1279,7 @@ class NestedSamplerFit(FitBase):
         index = resample_equal(
             np.arange(len(results.logl)),
             results.importance_weights(),
-            rstate=self.nested_sampler.rstate,
+            rstate=self._rng,
         )
         draw = NestedDraw(
             points=results.samples[index],
@@ -1247,6 +1288,8 @@ class NestedSamplerFit(FitBase):
             title=self.problem.name,
             best=best,
             results=results,
+            resample_index=index,
+            complete=complete,
         )
         _set_problem_vars(draw, self.problem)
         return draw
@@ -1257,6 +1300,18 @@ class NestedSamplerFit(FitBase):
     def plot(self, output_path):
         if self.state is not None:
             self.state.show(figfile=output_path)
+
+    @staticmethod
+    def h5load(group: "Group") -> "NestedDraw":
+        from .nested_sampling import h5load
+
+        return h5load(group)
+
+    @staticmethod
+    def h5dump(group: "Group", state: "NestedDraw"):
+        from .nested_sampling import h5dump
+
+        h5dump(group, state)
 
     def _best_sample(self):
         """
@@ -1309,6 +1364,10 @@ class NestedSamplerFit(FitBase):
             population_points=population_points,
             population_values=population_values,
         )
+        # Offset by one so that the first iteration updates: a run killed
+        # before the first live set is replaced should still leave a sample.
+        if step % self._posterior_interval == 1 % self._posterior_interval:
+            self._update_posterior(monitors)
 
     def _live_points(self):
         """
