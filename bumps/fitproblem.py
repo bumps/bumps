@@ -1147,7 +1147,7 @@ def _load_script_from_path(
         # Try a specialized model loader
         problem = plugin.load_model(filename)
         if problem is None:
-            problem = _load_script(filename, args=args)
+            problem = _load_script(filename, args=args, sources=sources)
     # Note: keeping problem.script_path separate from problem.path because
     # the problem.path may be the result of deserializing the model.
     problem.script_path = str(path.expanduser().resolve())
