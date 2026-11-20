@@ -65,7 +65,8 @@ class ModelFunction(object):
 
 def select_function(argv, vector=True):
     if len(argv) == 0:
-        raise ValueError("no function provided")
+        available = columnize(ModelFunction.available(), indent="    ")
+        raise ValueError(f"No function provided. Use one of:\n{available}")
 
     model = ModelFunction.lookup(argv[0])
     if model is None:
@@ -90,7 +91,7 @@ def columnize(L, indent="", width=79):
     """
     column_width = max(len(w) for w in L) + 1
     num_columns = (width - len(indent)) // column_width
-    num_rows = len(L) // num_columns
+    num_rows = (len(L) + num_columns - 1) // num_columns
     L = L + [""] * (num_rows * num_columns - len(L))
     columns = [L[k * num_rows : (k + 1) * num_rows] for k in range(num_columns)]
     lines = [" ".join("%-*s" % (column_width, entry) for entry in row) for row in zip(*columns)]

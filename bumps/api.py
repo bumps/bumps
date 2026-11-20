@@ -520,7 +520,7 @@ async def export_results(export_path: Union[str, List[str]] = ""):
 
     if not isinstance(export_path, list):
         export_path = [export_path]
-    path = Path(*export_path).expanduser().absolute()
+    path = Path(*export_path).expanduser().resolve()
     notification_id = await add_notification(content=f"<span>{str(path)}</span>", title="Export started", timeout=None)
     try:
         await to_thread(export_fit, path, problem, fit, serializer)
@@ -1005,7 +1005,7 @@ async def get_data_plot(model_indices: Optional[List[int]] = None):
         if fitProblem.num_models > 1:
             chisq_str = fitness_chisq_str(model)
             text = f"χ² = {chisq_str}; overall {overall_chisq_str}"
-            title = f"Model {index+1}: {model.name}"
+            title = f"Model {index + 1}: {model.name}"
         else:
             text = f"χ² = {overall_chisq_str}"
             title = f"{model.name}"
@@ -1567,7 +1567,7 @@ def _get_dirlisting_sync(pathlist: Optional[List[str]] = None):
         missing = path
         path = Path.cwd()
 
-    abs_path = path.absolute()
+    abs_path = path.expanduser().resolve()
     for p in abs_path.iterdir():
         try:
             stat = p.stat()
@@ -1582,7 +1582,6 @@ def _get_dirlisting_sync(pathlist: Optional[List[str]] = None):
             fileinfo["size"] = 0
             subfolders.append(fileinfo)
         else:
-            # files.append(p.resolve().name)
             fileinfo["size"] = stat.st_size
             files.append(fileinfo)
     # for Windows: list drives as well

@@ -299,6 +299,9 @@ class ProblemState:
                 raise
         write_string(group, "serializer", serializer)
         write_json(group, "libraries", get_libraries(self.fitProblem))
+        sources = getattr(self.fitProblem, "sources")
+        if sources:
+            write_json(group, "sources", sources)
         # write_json(group, 'pathlist', self.pathlist)
         # write_string(group, 'filename', self.filename)
 
@@ -312,6 +315,8 @@ class ProblemState:
         group = parent["problem"]
         self.serializer = read_string(group, "serializer")
         self.fitProblem = read_fitproblem(group, "fitProblem", method=self.serializer)
+        sources = read_json(group, "sources")
+        self.fitProblem.sources = None if sources is UNDEFINED else sources
         # self.pathlist = read_json(group, 'pathlist')
         # self.filename = read_string(group, 'filename')
 
