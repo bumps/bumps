@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/biomejs/pre-commit
-    rev: bc3c1d9acd69eaa1e5912f282ca563f914fd78d3 # v2.6.4 (tag pins @biomejs/biome to the same version)
+    rev: v2.6.5
     hooks:
       - id: biome-format
         files: \.(vue|js|ts|mjs|tsx|jsx|json)$
@@ -16,7 +16,7 @@ repos:
         # Recommended for Markdown to prevent weird line breaks in docs
         args: ["--prose-wrap", "always"]
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c # v6.0.0
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c # frozen: v6.0.0
     hooks:
       - id: check-added-large-files
         args: [--maxkb=8192]
@@ -33,7 +33,7 @@ repos:
           bumps/dream/random123
           bumps/webview/client/src
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 25bcf95026b96e2dd3c0aec3090c3d6ef6ca2e6c # v0.17.3
+    rev: 25bcf95026b96e2dd3c0aec3090c3d6ef6ca2e6c # frozen: v0.17.3
     hooks:
       # - id: ruff
       #   args: [--fix, --exit-non-zero-on-fix]
@@ -43,6 +43,3 @@ repos:
           bumps/dream/random123
           bumps/webview/client/src
           extra/platform_scripts
-
-ci:
-  autoupdate_schedule: monthly
