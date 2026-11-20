@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef, watch } from "vue";
 import { formatRelative } from "date-fns";
-import { addNotification } from "../app_state";
+import { computed, ref, shallowRef, watch } from "vue";
 import type { FileBrowserSettings } from "../app_state";
+import { addNotification } from "../app_state";
 import type { AsyncSocket } from "../asyncSocket.ts";
 
 const props = defineProps<{

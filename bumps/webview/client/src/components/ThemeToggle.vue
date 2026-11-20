@@ -1,22 +1,19 @@
 <!-- Button to toggle theme -->
 <template>
   <button type="button" :aria-label="`Switch to ${nextTheme} theme`" class="theme-toggle" @click="toggleTheme">
-    <span v-if="currentTheme === 'light'">🌞</span>
+    <span v-if="theme === 'light'">🌞</span>
     <span v-else>🌜</span>
   </button>
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { computed } from "vue";
+import { theme } from "../app_state";
 
-/** Themes come from html data-bs-theme */
-const currentTheme = ref(document.documentElement.getAttribute("data-bs-theme") || "light");
-const nextTheme = computed(() => (currentTheme.value === "light" ? "dark" : "light"));
+const nextTheme = computed(() => (theme.value === "light" ? "dark" : "light"));
 
 function toggleTheme() {
-  const newTheme = nextTheme.value;
-  document.documentElement.setAttribute("data-bs-theme", newTheme);
-  currentTheme.value = newTheme;
+  theme.value = nextTheme.value;
 }
 </script>
 

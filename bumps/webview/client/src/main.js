@@ -3,6 +3,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "./style.css";
 import { io } from "socket.io-client";
 import App from "./App.vue";
+import plugins from "./global/plugins";
 import { panels } from "./panels";
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -15,4 +16,9 @@ const socket = io(sio_server, {
   path: `${sio_base_path}socket.io`,
 });
 
-createApp(App, { panels, socket, singlePanel, name }).mount("#app");
+const app = createApp(App, { panels, socket, singlePanel, name });
+
+/** register plugins/middleware */
+for (const [plugin, options] of plugins) app.use(plugin, options);
+
+app.mount("#app");

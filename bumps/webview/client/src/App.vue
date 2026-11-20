@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRaw } from "vue";
+import { computed, ref, toRaw, watchEffect } from "vue";
 import {
   active_layout,
   activePanels,
@@ -10,6 +10,8 @@ import {
   default_fitter,
   default_fitter_settings,
   disconnected,
+  type FileBrowserSettings,
+  type FitSetting,
   file_menu_items,
   fileBrowser,
   fitOptions,
@@ -17,8 +19,7 @@ import {
   notifications,
   shared_state,
   socket as socket_ref,
-  type FileBrowserSettings,
-  type FitSetting,
+  theme,
 } from "./app_state";
 import Gear from "./assets/gear.svg?component";
 import "./asyncSocket"; // patch Socket with asyncEmit
@@ -43,13 +44,14 @@ const props = defineProps<{
 const show_menu = ref(false);
 
 // Control Dark Mode from system media query
-const prefersDarkMediaQueryList = window.matchMedia("(prefers-color-scheme: dark)");
-function setDarkTheme(prefersDark: boolean) {
-  const theme = prefersDark ? "dark" : "light";
-  document.documentElement.setAttribute("data-bs-theme", theme);
-}
-prefersDarkMediaQueryList.addEventListener("change", (e) => setDarkTheme(e.matches));
-setDarkTheme(prefersDarkMediaQueryList.matches);
+const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
+const setDarkTheme = (dark: boolean) => {
+  theme.value = dark ? "dark" : "light";
+};
+prefersDark.addEventListener("change", (e) => setDarkTheme(e.matches));
+setDarkTheme(prefersDark.matches);
+// mirror the theme onto <html data-bs-theme> for Bootstrap
+watchEffect(() => document.documentElement.setAttribute("data-bs-theme", theme.value));
 
 const singlePanelTitle = props.singlePanel?.toLowerCase();
 if (singlePanelTitle) {

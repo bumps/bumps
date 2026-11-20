@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
 import * as mpld3 from "mpld3";
 import contour from "plotly.js/lib/contour";
 import * as Plotly from "plotly.js/lib/core";
 import heatmap from "plotly.js/lib/heatmap";
 import scatterternary from "plotly.js/lib/scatterternary";
 import { v4 as uuidv4 } from "uuid";
+import { onMounted, ref } from "vue";
 import type { AsyncSocket } from "../asyncSocket";
 import { configWithSVGDownloadButton } from "../plotly_extras";
 import { setupDrawLoop } from "../setupDrawLoop";

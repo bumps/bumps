@@ -1,6 +1,6 @@
-import { readonly, ref, shallowRef } from "vue";
-import type { Ref, ShallowRef } from "vue";
 import { v4 as uuidv4 } from "uuid";
+import type { Ref, ShallowRef } from "vue";
+import { readonly, ref, shallowRef } from "vue";
 import type { AsyncSocket } from "./asyncSocket.ts";
 
 interface ModalDialog {
@@ -33,6 +33,8 @@ export const fileBrowser = ref<ModalDialog>();
 export const active_layout = ref<(typeof LAYOUTS)[number]>("left-right");
 // selected tab in each pane, kept here so it survives layout changes
 export const activePanels = ref<[number, number]>([0, 1]);
+// single source of truth for the UI theme; App.vue mirrors it onto <html data-bs-theme> for Bootstrap
+export const theme = ref<"light" | "dark">("light");
 export const default_fitter_settings = shallowRef<{ [fit_name: string]: FitSetting }>({});
 export const default_fitter = "amoeba";
 export const notifications = ref<{ title: string; content: string; id: string; spinner: boolean }[]>([]);

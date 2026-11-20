@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref } from "vue";
 import * as mpld3 from "mpld3";
 import { v4 as uuidv4 } from "uuid";
+import { ref } from "vue";
 import type { AsyncSocket } from "../asyncSocket.ts";
 import { cache } from "../plot_cache";
 import { setupDrawLoop } from "../setupDrawLoop";

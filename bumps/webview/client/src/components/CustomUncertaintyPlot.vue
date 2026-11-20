@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref } from "vue";
 import * as mpld3 from "mpld3";
 import * as Plotly from "plotly.js/lib/core";
 import { v4 as uuidv4 } from "uuid";
-import type { TableData } from "./CSVTable.vue";
-import CSVTable from "./CSVTable.vue";
+import { nextTick, onMounted, ref } from "vue";
 import type { AsyncSocket } from "../asyncSocket";
 import { cache } from "../plot_cache";
 import { configWithSVGDownloadButton } from "../plotly_extras";
 import { setupDrawLoop } from "../setupDrawLoop";
+import type { TableData } from "./CSVTable.vue";
+import CSVTable from "./CSVTable.vue";
 
 const export_data = ref<string | null>(null);
 

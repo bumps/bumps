@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
 import { getDiff } from "json-difference";
+import { onMounted, ref } from "vue";
 import VueJsonPretty from "vue-json-pretty";
 import type { AsyncSocket } from "../asyncSocket.ts";
 import { setupDrawLoop } from "../setupDrawLoop";

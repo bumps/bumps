@@ -13,7 +13,7 @@ const KNOWN: Record<string, string> = {
   "scrollable-region-focusable": "panel .tab-content needs tabindex or focusable content",
 };
 
-for (const title of ["Data", "Summary", "Log", "History", "Convergence", "Model", "Parameters"]) {
+for (const title of ["Data", "Summary", "Log", "History", "Convergence", "Model", "Parameters", "Script Editor"]) {
   test(`${title} panel has no serious a11y violations`, async ({ page }) => {
     const tab = panes(page).left.getByRole("tab", { name: title, exact: true });
     await tab.click();
