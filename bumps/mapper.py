@@ -143,7 +143,7 @@ def show_performance(timestamps):
 
     tstart, tstop = [np.array(v) for v in zip(*timestamps)]
     print(
-        f"median step time {np.median(tstart[1:]-tstop[:-1])/1e6:.2f} ms (serial) and map time {np.median(tstop-tstart)/1e6:.2f} ms (parallel)"
+        f"median step time {np.median(tstart[1:] - tstop[:-1]) / 1e6:.2f} ms (serial) and map time {np.median(tstop - tstart) / 1e6:.2f} ms (parallel)"
     )
 
 

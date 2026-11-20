@@ -82,6 +82,7 @@ PREFERRED_PORT = 5148  # "SLAB"
 
 gil_disabled = not (getattr(sys, "_is_gil_enabled", lambda: True)())
 
+
 @dataclass
 class BumpsOptions:
     """
@@ -466,7 +467,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--threads",
         action=argparse.BooleanOptionalAction,
         default=BumpsOptions.threads,
-        help="Enable multithreaded parallelism (Defaults to True on free-threaded Python. Use --no-threads to disable)"
+        help="Enable multithreaded parallelism (Defaults to True on free-threaded Python. Use --no-threads to disable)",
     )
     misc.add_argument(
         "--mpi",
@@ -593,9 +594,9 @@ def test_bumps_options():
     valid = {f.name for f in fields(BumpsOptions)}
     parsed = {k.split(".")[0] for k in args.__dict__.keys()}
     if parsed - valid:
-        raise TypeError(f"The following fields are missing from BumpsOptions: {parsed-valid}")
+        raise TypeError(f"The following fields are missing from BumpsOptions: {parsed - valid}")
     if valid - parsed:
-        raise TypeError(f"The following fields don't have command options: {valid-parsed}")
+        raise TypeError(f"The following fields don't have command options: {valid - parsed}")
 
     # Check defaults.
     # Using `defaults = BumpsOptions()` so that fit_options dict field gets assigned {}

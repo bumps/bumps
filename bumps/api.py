@@ -1005,7 +1005,7 @@ async def get_data_plot(model_indices: Optional[List[int]] = None):
         if fitProblem.num_models > 1:
             chisq_str = fitness_chisq_str(model)
             text = f"χ² = {chisq_str}; overall {overall_chisq_str}"
-            title = f"Model {index+1}: {model.name}"
+            title = f"Model {index + 1}: {model.name}"
         else:
             text = f"χ² = {overall_chisq_str}"
             title = f"{model.name}"
