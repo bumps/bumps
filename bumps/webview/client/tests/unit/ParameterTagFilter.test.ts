@@ -82,6 +82,11 @@ test("A selected tag that no parameter has any more stops filtering", async () =
   // e.g. after loading a different model; there is no button left to clear it with
   mountFilter();
   await click("Include", "a");
-  await wrapper.setProps({ parameters: [{ name: "x", tags: ["b"] }, { name: "y", tags: [] }] });
+  await wrapper.setProps({
+    parameters: [
+      { name: "x", tags: ["b"] },
+      { name: "y", tags: [] },
+    ],
+  });
   expect(shown()).toEqual(["x", "y"]);
 });

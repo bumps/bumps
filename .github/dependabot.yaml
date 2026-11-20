@@ -7,3 +7,9 @@ updates:
     schedule:
       # Check for updates to GitHub Actions every week
       interval: "monthly"
+
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    schedule:
+      # matches the previous pre-commit.ci autoupdate_schedule
+      interval: "monthly"

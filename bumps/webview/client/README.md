@@ -10,7 +10,10 @@ python -m bumps.webview.server
 
 ## Recommended IDE Setup
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+[VSCode](https://code.visualstudio.com/) +
+[Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and
+disable Vetur) +
+[TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
 
 ## Customize configuration
 
@@ -30,8 +33,9 @@ npm run dev
 
 ### Compile and Minify
 
-This will create a new folder `./dist/<client version>/` and build the client there,
-with a unique tag in the name (suitable for local testing), e.g. `./dist/<client version>/assets/index.BaQLi6ia.js`
+This will create a new folder `./dist/<client version>/` and build the client
+there, with a unique tag in the name (suitable for local testing), e.g.
+`./dist/<client version>/assets/index.BaQLi6ia.js`
 
 ```sh
 npm run build

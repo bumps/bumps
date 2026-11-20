@@ -1667,7 +1667,7 @@ class Draw:
                 # Backward compatibility: old interface had derived returning a list
                 newlabels = state._derived_labels
                 if not newlabels:
-                    newlabels = [f"F{k+1}" for k in range(len(derived))]
+                    newlabels = [f"F{k + 1}" for k in range(len(derived))]
             newvars = asarray(newvars).T
             newvars = newvars.reshape(Ngen, Npop, -1)
             chains = np.dstack((chains, newvars))

@@ -8,6 +8,7 @@ export default mergeConfig(
     test: {
       environment: "jsdom",
       include: ["tests/unit/**/*.test.ts"],
+      pool: "threads",
     },
-  }),
+  })
 );

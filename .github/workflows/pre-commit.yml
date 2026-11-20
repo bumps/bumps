@@ -1,0 +1,25 @@
+name: pre-commit
+
+# Runs the hooks in .pre-commit-config.yaml on GitHub Actions runners (no hook-env
+# size limit, unlike pre-commit.ci's free tier), then hands any autofixes to the
+# pre-commit.ci lite GitHub App, which pushes them back to the PR branch.
+# Requires the "pre-commit.ci lite" app to be installed on the repo:
+# https://github.com/apps/pre-commit-ci-lite
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.x"
+      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
+      # only push autofixes to PR branches, never to master
+      - uses: pre-commit-ci/lite-action@062bca0919bc9d6e66755cc05074b70c77e111fc # v1.2.0
+        if: always() && github.event_name == 'pull_request'
