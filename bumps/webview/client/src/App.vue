@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRaw } from "vue";
+import { computed, ref, toRaw, watchEffect } from "vue";
 import {
   active_layout,
   activePanels,
@@ -50,6 +50,8 @@ const setDarkTheme = (dark: boolean) => {
 };
 prefersDark.addEventListener("change", (e) => setDarkTheme(e.matches));
 setDarkTheme(prefersDark.matches);
+// mirror the theme onto <html data-bs-theme> for Bootstrap
+watchEffect(() => document.documentElement.setAttribute("data-bs-theme", theme.value));
 
 const singlePanelTitle = props.singlePanel?.toLowerCase();
 if (singlePanelTitle) {
