@@ -82,6 +82,7 @@ from .plots.convergence_plot import convergence_plot
 from .plots.custom_plot import process_custom_plot, CustomWebviewPlot
 from .plots.corrplot import Corr2d
 from .plots.nested_trace_plot import plot_nested_trace
+from .plots.nested_plot import nested_plot, nested_table
 
 
 # CRUFT: os.listdrives requires python 3.12 (and only exists on windows)
@@ -876,6 +877,8 @@ async def _fit_progress_handler(event: Dict):
             state.shared.active_fit = {}
     elif message == "convergence_update":
         state.set_convergence(event["convergence"])
+    elif message == "nested_update":
+        state.set_nested_stats(event["stats"])
     elif message == "progress":
         active_fit = state.shared.active_fit
         active_fit.update({"step": event["step"], "chisq": event["chisq"]})
@@ -1274,6 +1277,22 @@ async def get_convergence_plot(
         return to_json_compatible_dict(output)
     else:
         return None
+
+
+@register
+async def get_nested_plot(max_points: Optional[int] = 10000):
+    """
+    Get the nested sampling plot and table for the current fit, or None if
+    the fit did not use the nested sampler.
+
+    :param max_points: The maximum number of points to plot
+                        (thinning applied if too many points)
+    :return: A JSON-serializable dictionary with the plot data and the table rows."""
+    stats = state.fitting.nested_stats
+    if stats is None:
+        return None
+    output = {"plotdata": nested_plot(stats, max_points=max_points), "table": nested_table(stats)}
+    return to_json_compatible_dict(output)
 
 
 @register
@@ -1798,3 +1817,17 @@ def params_to_list(params, lookup=None, path="", freevars=None) -> List[ParamInf
         subparams = subparams[0] if subparams and len(subparams) == 1 else subparams
         params_to_list(subparams, lookup=lookup, path=f"{path}={params}", freevars=freevars)
     return list(lookup.values())
+
+
+def test_get_nested_plot():
+    from .plots.nested_plot import _example_stats
+
+    fitting = getattr(state, "fitting", None)
+    try:
+        state.fitting = FitResult()
+        assert asyncio.run(get_nested_plot()) is None
+        state.fitting.nested_stats = _example_stats()
+        output = asyncio.run(get_nested_plot())
+        assert {"plotdata", "table"} <= output.keys()
+    finally:
+        state.fitting = fitting

@@ -52,6 +52,7 @@ interface ActiveFit {
 
 class SharedState {
   public updated_convergence: Ref<undefined | string> = ref(undefined);
+  public updated_nested: Ref<undefined | string> = ref(undefined);
   public updated_uncertainty: Ref<undefined | string> = ref(undefined);
   public updated_parameters: Ref<undefined | string> = ref(undefined);
   public updated_model: Ref<string | undefined> = ref(undefined);
@@ -68,6 +69,7 @@ class SharedState {
   public autosave_history_length: Ref<number> = ref(10);
   public uncertainty_available: Ref<undefined | { available: boolean; num_points: number }> = ref(undefined);
   public convergence_available: Ref<undefined | boolean> = ref(undefined);
+  public nested_available: Ref<undefined | boolean> = ref(undefined);
   public resumable: Ref<undefined | null | string> = ref(undefined);
   public custom_plots_available: Ref<undefined | { parameter_based: boolean; uncertainty_based: boolean }> =
     ref(undefined);

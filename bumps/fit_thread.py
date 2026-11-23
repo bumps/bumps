@@ -126,6 +126,37 @@ class ConvergenceMonitor(monitor.Monitor):
         EVT_FIT_PROGRESS.send(evt)
 
 
+class NestedMonitor(monitor.Monitor):
+    """
+    Sends a nested_update event holding a :class:`~bumps.nested_sampling.NestedStats`
+    snapshot every *rate* seconds while a nested sampler runs, and once more when
+    it finishes. Fitters other than the nested sampler send nothing.
+    """
+
+    message: str = "nested_update"
+
+    def __init__(self, rate=0):
+        self.time = 0
+        self.rate = rate  # rate=0 for no progress update, only final
+        self.progress = None
+
+    def config_history(self, history):
+        history.requires(time=1)
+
+    def __call__(self, history):
+        self.progress = getattr(history, "nested_progress", None)
+        if self.progress is not None and self.rate > 0 and history.time[0] >= self.time + self.rate:
+            self._send_update()
+            self.time = history.time[0]
+
+    def final(self, history, best):
+        if self.progress is not None:
+            self._send_update()
+
+    def _send_update(self):
+        EVT_FIT_PROGRESS.send(dict(message=self.message, stats=self.progress.snapshot()))
+
+
 # HACK: We are grabbing uncertainty_state from the history on monitor update
 # and holding onto it for the monitor final call. Need to restructure the
 # history/monitor interaction so that object lifetimes are better controlled.
@@ -244,6 +275,7 @@ class FitThread(Thread):
             monitors = [
                 GUIProgressMonitor(self.problem),
                 ConvergenceMonitor(self.problem, rate=self.convergence_update, quantiles=self.convergence),
+                NestedMonitor(rate=self.convergence_update),
                 # GUIMonitor(self.problem,
                 #            message="convergence_update",
                 #            monitor=ConvergenceMonitor(),

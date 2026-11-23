@@ -1150,6 +1150,8 @@ class NestedSamplerFit(FitBase):
         from dynesty import DynamicNestedSampler
         from dynesty.dynamicsampler import stopping_function, weight_function
 
+        from .nested_sampling import NestedProgress
+
         options = _fill_defaults(options, self.settings)
         steps = options["steps"]
         # arguments for stopping criteria 
@@ -1170,14 +1172,21 @@ class NestedSamplerFit(FitBase):
             bound=options["bound_method"],
             sample=options["sample_method"],
         )
+        # NestedMonitor reads the progress from the history, as DreamMonitor does the fit state
+        progress = monitors.history.nested_progress = NestedProgress(
+            self.nested_sampler,
+            dlogz_target=options["dlogz"],
+            n_effective_target=options["n_effective"],
+        )
 
         niter = 0
         aborted = monitors.stopping()
 
         # baseline initial sampling
         if not aborted:
-            for _ in self.nested_sampler.sample_initial(dlogz=options["dlogz"], maxiter=steps):
+            for result in self.nested_sampler.sample_initial(dlogz=options["dlogz"], maxiter=steps):
                 niter += 1
+                progress.delta_logz = result.delta_logz
                 self.update(monitors, niter)
                 if monitors.stopping():
                     aborted = True
@@ -1193,9 +1202,12 @@ class NestedSamplerFit(FitBase):
         # sample in batches until the stopping criterion is reached
         # maxiter is per call, so we need to remove iters as we run
         while not aborted and niter < steps:
-            if stopping_function(self.nested_sampler.results, args=stop_args):  # evaluate stop
+            results = self.nested_sampler.results
+            stop, progress.stop_values = stopping_function(results, args=stop_args, return_vals=True)
+            if stop:
                 break
-            logl_bounds = weight_function(self.nested_sampler.results)  # derive bounds
+            progress.phase, progress.batch, progress.delta_logz = "batch", progress.batch + 1, None
+            logl_bounds = weight_function(results)  # derive bounds
             for _ in self.nested_sampler.sample_batch(logl_bounds=logl_bounds, maxiter=steps - niter):
                 niter += 1
                 self.update(monitors, niter)
@@ -1214,6 +1226,7 @@ class NestedSamplerFit(FitBase):
         # any completed batches, so it is not updated from the sampler here.
         if not aborted:
             self.results = self.nested_sampler.results
+        progress.phase = "done"
 
         x, fx = self._best_sample()
         self.state = monitors.history.fit_state = self._build_draw(best=(x, -fx))

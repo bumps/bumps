@@ -46,6 +46,7 @@ except ImportError:
 from bumps import __version__
 from .fitters import FIT_DEFAULT_ID
 from .logger import logger
+from .nested_sampling import NestedStats
 from .options import lookup_fitter
 from .serialize import serialize, deserialize
 from .serialize import serialize_bytes, deserialize_bytes
@@ -587,6 +588,9 @@ class FitResult:
     """List of best or (best, min, -1sigma, median, +1sigma, max) for the population at each step of the fit."""
     fit_state: Any = None
     """Fit state for resume, and for sampling from Monte Carlo fitters."""
+    # TODO: save nested_stats with the session
+    nested_stats: Optional[NestedStats] = None
+    """Progress of the nested sampler, if it was used. Not yet saved with the session."""
 
     def write(self, parent: "Group", include_fit_state=True):
         """
@@ -741,12 +745,14 @@ class State:
             # These are called only to trigger the update signals...
             # the convergence and fit_state will be unchanged by the calls below.
             self.set_convergence(item.fitting.convergence)
+            self.set_nested_stats(item.fitting.nested_stats)
             self.set_fit_state(item.fitting.fit_state, item.fitting.method)
 
     def set_active(self, problem, fitting: FitResult | None = None):
         self.problem = ProblemState(problem)  # default serializer
         self.fitting = fitting
         self.set_convergence(fitting.convergence)
+        self.set_nested_stats(fitting.nested_stats)
         self.set_fit_state(fitting.fit_state, fitting.method)
 
     def reset_fitstate(self, copy: bool = False):
@@ -767,6 +773,7 @@ class State:
             )
             # These are called only to trigger the update signals...
             self.set_convergence(None)
+            self.set_nested_stats(None)
             self.set_fit_state(None)
         self.shared.active_history = None
 
@@ -775,6 +782,11 @@ class State:
         self.fitting.convergence = convergence
         self.shared.updated_convergence = now_string()
         self.shared.convergence_available = convergence is not None
+
+    def set_nested_stats(self, stats: Optional[NestedStats]):
+        self.fitting.nested_stats = stats
+        self.shared.updated_nested = now_string()
+        self.shared.nested_available = stats is not None
 
     def set_fit_state(self, fit_state, method=None):
         self.fitting.fit_state = fit_state
@@ -972,6 +984,7 @@ class SharedState:
     """
 
     updated_convergence: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
+    updated_nested: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
     updated_uncertainty: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
     updated_parameters: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
     updated_model: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
@@ -988,11 +1001,19 @@ class SharedState:
     autosave_history_length: int = 10
     uncertainty_available: Union[UNDEFINED_TYPE, UncertaintyAvailable] = UNDEFINED
     convergence_available: Union[UNDEFINED_TYPE, bool] = UNDEFINED
+    nested_available: Union[UNDEFINED_TYPE, bool] = UNDEFINED
     resumable: Union[UNDEFINED_TYPE, str, None] = None
     custom_plots_available: Union[UNDEFINED_TYPE, CustomPlotsAvailable] = UNDEFINED
     active_history: Union[UNDEFINED_TYPE, str, None] = UNDEFINED  # name of the active history item
 
-    _not_reloaded = ["active_fit", "autosave_session", "session_output_file", "_notification_callbacks"]
+    # nested_available is not reloaded since the nested stats are not yet saved with the session
+    _not_reloaded = [
+        "active_fit",
+        "autosave_session",
+        "session_output_file",
+        "nested_available",
+        "_notification_callbacks",
+    ]
     _notification_callbacks: Dict[str, Callable[[str, Any], Awaitable[None]]] = field(default_factory=dict)
 
     def __setattr__(self, name: str, value):
