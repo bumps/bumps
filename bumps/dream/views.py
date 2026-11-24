@@ -11,8 +11,9 @@ import numpy as np
 from scipy.stats import gaussian_kde
 
 from . import corrplot, varplot
+from ..bayes import BayesDraw, Draw
 from .stats import format_vars, format_uncertainty, save_vars, var_stats
-from .state import MCMCDraw, Draw
+from .state import MCMCDraw
 
 CORRPLOT_MAXVAR = 25  # maximum number of variables to plot in correlation matrix
 TRACE_WSPACE = 0.15
@@ -22,9 +23,9 @@ TRACE_HSPACE = 0.1
 # TODO: plot_all does not allow us to specify variables or their ranges
 # TODO: plot_all not tested with revised handling of derived parameters
 # TODO: remove hack allowing plot_all to accept a state.draw as well as a state object
-def plot_all(state: MCMCDraw | Draw, portion: Optional[float] = None, figfile=None):
+def plot_all(state: BayesDraw | Draw, portion: Optional[float] = None, figfile=None):
     # Print/save uncertainty report before loading matplotlib or creating plots
-    if isinstance(state, MCMCDraw):
+    if isinstance(state, BayesDraw):
         draw = state.draw(portion=portion)
     else:
         draw = state
@@ -53,27 +54,22 @@ def plot_all(state: MCMCDraw | Draw, portion: Optional[float] = None, figfile=No
     if figfile is not None:
         plt.savefig(figfile + "-vars" + figext)
 
-    # parameter traces
-    plt.figure()
-    plot_traces(draw.state, portion=draw.portion, vars=draw.vars)
-    plt.suptitle("Parameter history" + (" for " + draw.title if draw.title else ""))
-    if figfile is not None:
-        plt.savefig(figfile + "-trace" + figext)
-
-    # Acceptance rate
-    if False:
+    # Chain history plots are only meaningful for a chain based sampler.
+    if isinstance(state, MCMCDraw):
+        # parameter traces
         plt.figure()
-        plot_acceptance_rate(draw.state, portion=draw.portion)
+        plot_traces(draw.state, portion=draw.portion, vars=draw.vars)
+        plt.suptitle("Parameter history" + (" for " + draw.title if draw.title else ""))
         if figfile is not None:
-            plt.savefig(figfile + "-acceptance" + figext)
+            plt.savefig(figfile + "-trace" + figext)
 
-    # convergence plot
-    plt.figure()
-    plot_logp(draw.state, portion=draw.portion)
-    if draw.title:
-        plt.suptitle(draw.title)
-    if figfile is not None:
-        plt.savefig(figfile + "-logp" + figext)
+        # convergence plot
+        plt.figure()
+        plot_logp(draw.state, portion=draw.portion)
+        if draw.title:
+            plt.suptitle(draw.title)
+        if figfile is not None:
+            plt.savefig(figfile + "-logp" + figext)
 
     # correlation plot
     if draw.Nvar <= CORRPLOT_MAXVAR:

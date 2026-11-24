@@ -1,6 +1,9 @@
 """
 Sampling history for MCMC.
 
+:class:`MCMCDraw` extends :class:`bumps.bayes.BayesDraw` with the Markov
+chains produced by DREAM.
+
 MCMC keeps track of a number of things during sampling.
 
 The results may be queried as follows::
@@ -73,21 +76,21 @@ generation is the last generation number
 
 # TODO: state should be collected in files as we go
 
-__all__ = ["MCMCDraw", "Draw", "dream_load", "h5load", "h5dump"]
+__all__ = ["MCMCDraw", "BayesDraw", "Draw", "SelectionType", "dream_load", "h5load", "h5dump"]
 
 import os.path
 import re
 import gzip
-from typing import List, Dict, TextIO, Tuple, Union, Optional, Callable
+from typing import List, TextIO, Union, Optional, Callable
 from pathlib import Path
 import warnings
-from fnmatch import fnmatch
 
 import numpy as np
-from numpy import empty, sum, asarray, inf, argmax, hstack, dstack
+from numpy import empty, sum, asarray, argmax, hstack, dstack
 from numpy import loadtxt, savetxt, reshape
 from numpy.typing import NDArray
 
+from ..bayes import BayesDraw, Draw, SelectionType
 from .convergence import burn_point
 from .outliers import identify_outliers
 from .util import rng
@@ -104,8 +107,6 @@ CREATE = gzip.open
 # EXT = ".mc"
 # CREATE = open
 
-
-SelectionType = Optional[Dict[Union[int, str], Tuple[float, float]]]
 
 UNCERTAINTY_DTYPE = "d"
 MAX_LABEL_LENGTH = 1024
@@ -545,8 +546,10 @@ def reload_state_from_export(parfile):
     return state
 
 
-class MCMCDraw(object):
+class MCMCDraw(BayesDraw):
     """
+    A sample from a posterior distribution, drawn as a set of Markov chains.
+
     Initialization parameters:
 
     *Ngen* is the number of generations to store. These are retrievable through
@@ -610,12 +613,6 @@ class MCMCDraw(object):
     means the entire chain is used for statistical plots.
     """
 
-    _derived_fn: Callable[[NDArray], NDArray] = None
-    _derived_labels: List[str] = None
-    _labels = None
-    _integer_vars = None  # boolean array of integer variables, or None
-    title = None
-
     def __init__(
         self,
         Ngen: int,
@@ -626,19 +623,13 @@ class MCMCDraw(object):
         Ncr: int,
         thinning: int,
     ):
+        super().__init__()
+
         # self.generation and self.draws are used to control the number of iterations in
         # the dream loop, and must therefore be set to the current size of the state on
         # resume rather than the cumulative across all runs. To retrieve the totals use
         # generations=self.total_generations and draws=self.total_generations*self.Npop.
-
-        # Total number of draws so far
         self.draws = 0
-        self.portion = 1.0
-
-        # Maximum observed likelihood
-        # Note: with thinning and burn the best may not be in the set of samples
-        self._best_x = None
-        self._best_logp = -inf
         self._best_gen = 0
 
         # TODO: Scrap the per-generation data. It takes memory and disk, but doesn't add value.
@@ -688,6 +679,7 @@ class MCMCDraw(object):
 
     @property
     def Nsamples(self):
+        """Number of points visited across all chains"""
         return self._gen_logp.size
 
     @property
@@ -812,10 +804,21 @@ class MCMCDraw(object):
         portion = self.portion if portion is None else portion
         return total_gens - int(portion * saved_gens)
 
-    def show(self, portion: Optional[float] = None, figfile: Union[str, Path, None] = None):
-        from .views import plot_all
+    def sample_points(self, portion: Optional[float] = None, thin: int = 1, outliers: bool = False):
+        """
+        Return *(points, logp, weights)* for the sample, with *portion* and
+        *thin* applied to the generations. The chains are equally weighted,
+        so the weights are None.
+        """
+        # TODO: Chains code is duplicated in traces()
+        _, chains, logp = self.chains()
+        generations = self._trimmed(portion, thin, len(chains))
+        keep = slice(None) if outliers else self._good_chains
+        chains, logp = chains[generations, keep, :], logp[generations, keep]
+        return chains.reshape(-1, chains.shape[2]), logp.flatten(), None
 
-        plot_all(self, portion=portion, figfile=figfile)
+    def _default_thin(self, n_est: int):
+        return max(min(self.Nthin, self._thin_count) * self.Npop // n_est, 1)
 
     # TODO: _last_gen and _draw_pop do similar things. Can they be merged?
     def _last_gen(self):
@@ -885,23 +888,6 @@ class MCMCDraw(object):
         if i == len(self._update_draws):
             i = 0
         self._update_index = i
-
-    @property
-    def labels(self):
-        """
-        Labels associated with each parameter in a point. This doesn't
-        include the labels for derived quantities. For these you will
-        need to query state.draw().labels.
-        """
-        if self._labels is None:
-            result = ["P%d" % i for i in range(self._thin_point.shape[2])]
-        else:
-            result = self._labels
-        return result
-
-    @labels.setter
-    def labels(self, v: List[str]):
-        self._labels = v
 
     def _draw_pop(self):
         """
@@ -1251,12 +1237,6 @@ class MCMCDraw(object):
         """
         return asarray(self._outliers, "i")
 
-    def best(self):
-        """
-        Return the best point seen and its log likelihood.
-        """
-        return self._best_x, self._best_logp
-
     def stable_best(self):
         """
         Return True if the at least one full cycle of the circular
@@ -1308,193 +1288,6 @@ class MCMCDraw(object):
             logp[final], logp[idx] = logp[idx], logp[final]
             points[final, :], points[idx, :] = points[idx, :], points[final, :]
 
-    def sample(self, **kw):
-        """
-        Return a sample from the posterior distribution.
-
-        **Deprecated** use :meth:`draw` instead.
-        """
-        drawn = self.draw(**kw)
-        return drawn.points, drawn.logp
-
-    def entropy(
-        self,
-        vars: Optional[List[int]] = None,
-        portion: Optional[float] = None,
-        selection: SelectionType = None,
-        n_est: int = 10000,
-        thin: Optional[int] = None,
-        method: Optional[str] = None,
-    ):
-        r"""
-        Return entropy estimate and uncertainty from an MCMC draw.
-
-        *portion* is the portion of each chain to use (uses self.portion if None).
-
-        *vars* is the set of variables to marginalize over.  It is None for
-        the visible variables, or a list of variables.
-
-        *vars* is the list of variables to use for marginalization.
-
-        *selection* sets the range each parameter in the returned distribution,
-        using {variable: (low, high)}. Missing variables use the full range.
-
-        *n_est* is the number of points to use from the draw when estimating
-        the entropy (default=10000).
-
-        *thin* is the amount of thinning to use when selecting points from the
-        draw.
-
-        *method* determines which entropy calculation to use:
-
-        * gmm: fit sample to a gaussian mixture model (GMM) with $5 \sqrt{d}$
-          components where $d$ is the number fitted parameters and estimate
-          entropy by sampling from the GMM.
-
-        * llf: estimates likelihood scale factor from ratio of density
-          estimate to model likelihood, then computes Monte Carlo entropy
-          from sample; this does not work for marginal likelihood estimates.
-          DOI:10.1109/CCA.2010.5611198
-
-        * mvn: fit sample to a multi-variate Gaussian and return the entropy
-          of the best fit gaussian; uses bootstrap to estimate uncertainty.
-
-        * wnn: estimate entropy from nearest-neighbor distances in sample.
-          DOI:10.1214/18-AOS1688
-        """
-        from . import entropy
-
-        # Get the sample from the state.
-        # set default thinning to max((steps * samples/step) // n_est, 1)
-        if thin is None:
-            Nsteps = min(self.Nthin, self._thin_count)
-            thin = max(Nsteps * self.Npop // n_est, 1)
-            # print("thin", thin, Nsteps, self.Npop, self.Nthin, self._thin_count)
-        drawn = self.draw(portion=portion, vars=vars, selection=selection, thin=thin)
-
-        # TODO: don't print within a library function!
-        M = entropy.MVNEntropy(drawn.points)
-        print("Entropy from MVN: %s" % str(M))
-
-        if method is None:
-            # TODO: change default to gmm
-            method = "llf"
-
-        if method == "llf":
-            S, Serr = entropy.entropy(drawn.points, drawn.logp, N_entropy=n_est)
-            # print("Entropy from llf (Kramer): %s"%str(S))
-        elif method == "gmm":
-            # Try pure gmm ... pretty good
-            S, Serr = entropy.gmm_entropy(drawn.points, n_est=n_est)
-            # print("Entropy from gmm: %g +/- %g"% (S, Serr))
-        elif method == "wnn":
-            # Try pure wnn ... no good
-            S, Serr = entropy.wnn_entropy(drawn.points, n_est=n_est)
-            # print("Entropy from wnn: %s"%str(S))
-        elif method == "mvn":
-            S, Serr = entropy.mvn_entropy_bootstrap(drawn.points)
-            # print("Entropy from mvn: %s"%str(S))
-        else:
-            raise ValueError("unknown method %r" % method)
-
-        # Always return entropy estimate from draw, even if it is normal
-        return S, Serr
-
-    def show_labels(self):
-        """
-        List of parameters in the state, with the parameter number for each. Use this
-        to help with the inputs to state.draw().
-        """
-        print("\n".join(f"p[{k}] = {v}" for k, v in enumerate(self.labels)))
-
-    def draw(
-        self,
-        portion: Optional[float] = None,
-        vars: Optional[List[int]] = None,
-        exclude: Optional[List[int]] = None,
-        selection: SelectionType = None,
-        thin: int = 1,
-        outliers: bool = False,
-        derived: Optional[Callable] = None,
-    ):
-        """
-        Return a sample from the posterior distribution.
-
-        *portion* is the portion of each chain to use
-
-        *vars* is the list of vars that are active. Variables can be
-        0-origin integers or strings matching a variable label. Match uses
-        standard glob rules, with `*` matching any sequence, `?` matching any
-        character, `[abc]` matching one of `abc`, and `[!abc]` not matching
-        one of `abc`.
-
-        *selection* sets the range each parameter in the returned distribution,
-        using {var: (low, high)}. If *var* matches multiple labels, then use the
-        first restriction only. Missing variables use the full range.
-
-        *thin* takes every nth item.
-
-        *outliers* is True if outlier chains should be included (default False).
-
-        To plot the distribution for parameter p1::
-
-            draw = state.draw()
-            hist(draw.points[:, 0])
-
-        To plot the interdependence of p1 and p2::
-
-            draw = state.sample()
-            plot(draw.points[:, 0], draw.points[:, 1], '.')
-        """
-        # Fill in defaults
-        vars = vars if vars is not None else getattr(self, "_shown", None)
-        portion = self.portion if portion is None else portion
-        return Draw(
-            state=self,
-            portion=portion,
-            vars=vars,
-            exclude=exclude,
-            selection=selection,
-            thin=thin,
-            outliers=outliers,
-            derived=derived,
-        )
-
-    # TODO: Move processing of visible/integer/derived out of state
-    def set_visible_vars(self, labels: List[str]):
-        self._shown = [self.labels.index(v) for v in labels]
-        # print("\n".join(str(pair) for pair in enumerate(self.labels)))
-        # print(labels)
-        # print(self._shown)
-
-    def set_integer_vars(self, labels: List[str]):
-        """
-        Indicate tha variables should be considered integer variables when
-        computing statistics.
-        """
-        self._integer_vars = np.array([var in labels for var in self.labels])
-
-    def set_derived_vars(self, fn: Callable[[NDArray], NDArray], labels: List[str]):
-        """
-        Define derived variables from the sample. When calling draw() it will add
-        columns for the derived variables to each sample.
-
-        *fn* is a function taking points p[:, k] for k in 0 ... samples and
-        returning a set of derived variables pj[k] for each sample k.  The
-        variables can be returned as any kind of sequence including an
-        array or a tuple with one entry per variable.  The caller uses
-        asarray to convert the returned variables into a vars X samples array.
-        For convenience, a single variable can be returned by itself.
-
-        *labels* are the labels to use for the derived variables.
-
-        The following example adds the new variable x+y = P[0] + P[1]::
-
-            state.derive_vars(lambda p: p[0]+p[1], labels=["x+y"])
-        """
-        self._derived_fn = fn
-        self._derived_labels = labels
-
     def derive_vars(self, fn: Callable[[NDArray], NDArray], labels: Optional[List[str]] = None):
         """
         *** DEPRECATED ***
@@ -1530,246 +1323,6 @@ class MCMCDraw(object):
 
         # Add new variables to the points
         self._thin_point = dstack((self._thin_point, newvars))
-
-
-class Draw:
-    """
-    A set of sample points from an MCMC draw with restrictions applied.
-
-    **Inputs**
-
-    *state* is the :class:`MCMCDraw` containing all points.
-
-    *portion* is the fraction of points to use for the sample, starting
-    from the ends of the Markov chains.
-
-    *vars* is the list of vars that are active. Variables can be
-    0-origin integers or strings matching a variable label. Match uses
-    standard glob rules, with `*` matching any sequence, `?` matching any
-    character, `[abc]` matching one of `abc`, and `[!abc]` not matching
-    one of `abc`.
-
-    *exclude* all labels that match a pattern in the list. Matching rules
-    are the same as for *vars*. If a variable matches both *vars* and
-    *exclude* then it is included.
-
-    *selection* restricts the points returned to a specific region of the
-    parameter space using {var: (low, high)}. The var can be a 0-origin
-    integer or label as for *vars*. It can also be *logp* if restricting by
-    log likelihood. If a label matches multiple patterns then choose the
-    first restriction (this may change to all that match in future).
-
-    *thin* is the amount of thinning to apply, using every nth point in
-    the chain. This reduces autocorrelation in the chains and reduces
-    artificial spikes in the marginal distributions. (The distributions
-    will still be spiky, but the spikiness will be appropriate for the
-    number of points in the bins.)
-
-    **Attributes**
-
-    *points[n,k]* are the set of sampled points, where n is the number of
-    points and k is the number of parameters. The earlier points come
-    from earlier generations, but this is an accident of the implementation
-    and should not be relied on. n is usually the number of chains times the
-    number of saved generations, but this will change depending on *portion*,
-    *selection*, *thin* and *outliers* parameters. k is usually the number
-    of fitted parameters, but the derived and active parameter lists will
-    adjust this.
-
-    *Nvar* is the number of dimensions per point in the draw after
-    including derived parameters and excluding nuisance parameters.
-
-    *weights* are the weights associated with each point. Since the chains
-    are run at a single temperature the weights will all be 1.
-
-    *logp[n]* is the negative log likelihuud for each sampled point.
-
-    *labels* are the labels for the variables remaining after applying derived
-    variables and restricting to the requested *vars* list.
-
-    *integers* is an array of flags, one per parameter* indicating whether the
-    parameter is float (0) or int (1=floor).  The values in the chain are
-    managed as floats, and it is the responsibility of the likelihood function
-    to transform them to integers. Models which use round, trunc or ceil rather
-    than float are not yet supported.[1]
-
-    *state* is the original MCMCDraw.
-
-    [1] Note that discrete parameter handling is likely to change in the future.
-    The derivative based optimizers in particular will need to know that the
-    minimum step size for discrete parameters is one when computing the partial
-    derivative. If bumps converts the parameters to integers before calling the
-    likelihood function then we will only need a discrete flag since we will
-    always use the *floor()* function.
-    """
-
-    state: MCMCDraw
-    vars: Optional[List[Union[int, str]]]
-    portion: float
-    selection: SelectionType
-    thin: int
-    Nvar: int
-
-    title: Optional[str]
-    labels: List[str]
-    integers: NDArray  # boolean
-    logp: NDArray
-    points: NDArray
-    weights: NDArray
-
-    # # MC chains, with mask for included points.
-    # generation: NDArray
-    # chains: NDArray
-    # chains_logp: NDArray
-    # mask: Optional[NDArray]
-
-    def __init__(
-        self,
-        state: MCMCDraw,
-        portion: float = 1.0,
-        vars: Optional[List[Union[int, str]]] = None,
-        exclude: Optional[List[Union[int, str]]] = None,
-        selection: SelectionType = None,
-        thin: int = 1,
-        outliers: bool = False,
-        derived: Optional[Callable] = None,
-    ):
-        self.state = state
-        self.portion = portion
-        self.thin = thin
-        self.selection = selection
-        self.labels = state.labels[:]  # copy of labels
-        self.integers = (
-            state._integer_vars if state._integer_vars is not None else np.zeros(len(self.labels), dtype=bool)
-        )
-        self.title = state.title
-
-        # TODO: Make a copy?
-        # Draw samples from the state according to portion and thinning.
-        _, chains, logp = state.chains()
-        start = int((1 - portion) * len(chains))
-        gen_index = slice(start, None, thin)
-        chain_index = slice(None) if outliers else state._good_chains
-        chains = chains[gen_index, chain_index, :]
-        chains_logp = logp[gen_index, chain_index]
-        Ngen, Npop, Nvar = chains.shape
-
-        # Derived variables are created during the draw so that existing data isn't altered.
-        # This allows resume to work without extra effort. The code is also much simpler.
-        if derived is None:
-            derived = state._derived_fn
-        if derived is not None:
-            newvars = derived(chains.reshape(-1, Nvar).T)
-            # If derived returns a dict, then use its keys as parameter labels
-            if isinstance(newvars, dict):
-                newlabels, newvars = zip(*newvars.items())
-            else:
-                # Backward compatibility: old interface had derived returning a list
-                newlabels = state._derived_labels
-                if not newlabels:
-                    newlabels = [f"F{k+1}" for k in range(len(derived))]
-            newvars = asarray(newvars).T
-            newvars = newvars.reshape(Ngen, Npop, -1)
-            chains = np.dstack((chains, newvars))
-            Nvar = chains.shape[2]  # Update the number of variables
-            self.integers = np.append(self.integers, [False] * newvars.shape[2])
-            self.labels.extend(newlabels)
-
-        # Select points within range limits given by selection, if any.
-        # This happens before variable subsetting so that numerical indices
-        # are independent of the displayed parameters. It happens after
-        # calculating derived variables so that we can apply selection to derived values.
-        mask = True
-        selection = self._selection_pattern_to_index(selection)
-        for var, limits in selection.items():
-            if var == "logp":
-                mask = mask & (chains_logp >= limits[0]) & (chains_logp <= limits[1])
-            else:
-                mask = mask & (chains[..., var] >= limits[0]) & (chains[..., var] <= limits[1])
-
-        # TODO: with pattern matching we've lost the ability to reorder parameters
-        # Restrict draw to a subset of the variables. Labels matching include take
-        # precedence over those matching exclude.
-        include = self._var_pattern_to_index(vars)
-        exclude = self._var_pattern_to_index(exclude)
-        exclude = [k for k in exclude if k not in include]
-        include = [k for k in include if k not in exclude]
-        # if vars and not include:
-        #     # Note: could be empty because everything is excluded
-        #    logging.warning(f"No parameters match {vars} in {self.labels}")
-        if include:  # if nothing matches then match everything
-            chains = chains[:, :, include]
-            # Mask doesn't include the final dimension, so doesn't need to be trimmed.
-            Nvar = chains.shape[-1]
-            self.labels = [self.labels[v] for v in include]
-            self.integers = self.integers[include]
-            self.vars = include  # indices of selected items
-        else:
-            self.vars = None
-
-        # Convert to a vector of selected points.
-        if mask is True:
-            # All points selected, so simply adjust the view
-            self.points = chains.reshape(-1, Nvar)
-            self.logp = chains_logp.flatten()
-        else:
-            # Only some points selected, so grab those under the mask
-            self.points = chains[mask, :]
-            self.logp = chains_logp[mask]
-
-        # # Keep the thinned chains and the mask for trace plots
-        # self.chains = chains
-        # self.chains_logp = chains_logp
-        # self.mask = None if mask is True else mask
-        # stop, step = state.total_generations, thin*state.thinning
-        # self.generation = np.arange(stop - (Ngen-1)*step + 1, stop + 2, step) # 1-origin inclusive
-
-        self.weights = None
-        self.Nvar = Nvar
-
-        # Cache for the sorted argument indices.
-        self._argsort_indices = {}
-
-    def get_argsort_indices(self, var: int):
-        """
-        Sort var by value. Unlike argsort this caches the results for reuse.
-        """
-        if var not in self._argsort_indices:
-            self._argsort_indices[var] = np.argsort(self.points[:, var].flatten())
-        return self._argsort_indices[var]
-
-    def _selection_pattern_to_index(self, selection: dict[int | str, tuple[float, float]] | None):
-        """
-        For the selection dictionary {pattern: data}, return a dictionary of {index: data}
-        where data comes from the first pattern to matched by the label. Patterns are the
-        standard unix glob patterns, or integers for specific numbered variables
-        (see :meth:`State.show_labels`).
-        """
-        if selection is None:
-            return {}
-        result = {}
-        if data := selection.get("logp", None):
-            result["logp"] = data
-        for index, label in enumerate(self.labels):
-            for var, data in selection.items():
-                if index == var or (isinstance(var, str) and fnmatch(label, var)):
-                    result[index] = data
-                    break
-        return result
-
-    def _var_pattern_to_index(self, vars: list[int | str] | None):
-        """
-        Convert the include/exclude list of var patterns into a list of integer
-        parameter indices. Patterns are the standard unix glob patterns, or integers
-        for specific numbered variables (see :meth:`State.show_labels`)
-        """
-        if vars is None:
-            return []
-
-        def var_match(var, label, index):
-            return index == var or (isinstance(var, str) and fnmatch(label, var))
-
-        return [k for k, p in enumerate(self.labels) if any(var_match(v, p, k) for v in vars)]
 
 
 def test():

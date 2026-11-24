@@ -606,6 +606,8 @@ def export_fit(
         if hasattr(fit_state, "show"):
             with redirect_console(str(path / f"{basename}.err")):
                 fit_state.show(figfile=output_pathstr)
+        # Only DREAM has its own on-disk format for the sample.
+        if hasattr(fit_state, "save"):
             fit_state.save(output_pathstr)
 
         # TODO: draw from covariance matrix if we don't have an MC sample
