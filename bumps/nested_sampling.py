@@ -36,34 +36,9 @@ class NestedDraw(BayesDraw):
         self.results = results.copy() if results is not None else None
 
     @property
-    def extra_results(self) -> dict:
-        """
-        Return the scalar results of the run, for the exported fit summary.
-
-        *logz* +/- *logzerr* is the log of the Bayesian evidence and
-        *kl_divergence* is the information gained from prior to posterior,
-        in nats. *niter* is the number of nested sampling iterations and
-        *ncall* the number of likelihood evaluations.
-
-        Log Z is unnormalised: bumps computes the negative log likelihood as
-        1/2 sum(residuals**2), dropping the gaussian normalisation constant
-        -sum(log(sqrt(2 pi) dy)). Bayes factors are therefore only valid
-        between models fitted to the same data with the same uncertainties.
-
-        Empty if the sample did not come from dynesty.
-        """
-        results = self.results
-        if results is None:
-            return {}
-        # logz, logzerr and information are per-iteration arrays; the
-        # estimate for the complete run is the final entry of each.
-        return {
-            "logz": float(results.logz[-1]),
-            "logzerr": float(results.logzerr[-1]),
-            "kl_divergence": float(results.information[-1]),
-            "niter": int(results.niter),
-            "ncall": int(np.sum(results.ncall)),
-        }
+    def nfev(self) -> Optional[int]:
+        """Number of likelihood evaluations, or None if not from dynesty."""
+        return None if self.results is None else int(np.sum(self.results.ncall))
 
     def save(self, filename: str):
         """
@@ -74,6 +49,16 @@ class NestedDraw(BayesDraw):
         itself. This is the sample the evidence is computed from; the
         equally weighted posterior used for statistics and plots is a
         resampling of it.
+
+        *logz* +/- *logzerr* is the running log of the Bayesian evidence and
+        *information* the running information gained from prior to posterior
+        (the KL divergence) in nats, so the estimates for the complete run
+        are in the last row.
+
+        Log Z is unnormalised: bumps computes the negative log likelihood as
+        1/2 sum(residuals**2), dropping the gaussian normalisation constant
+        -sum(log(sqrt(2 pi) dy)). Bayes factors are therefore only valid
+        between models fitted to the same data with the same uncertainties.
         """
         from .dream.state import CREATE, EXT
 
@@ -90,6 +75,7 @@ class NestedDraw(BayesDraw):
                 "logvol": results.logvol,
                 "logz": results.logz,
                 "logzerr": results.logzerr,
+                "information": results.information,
             }
             # number of live points per sample; dynamic runs only
             if "samples_n" in results:

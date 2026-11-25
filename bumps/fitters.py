@@ -2039,15 +2039,16 @@ def _build_fit_result(problem, webview_fit):
         labels=problem.labels(),
         numpoints=problem.model_points(),
         chisq=problem.chisq(nllf=fx),
-        # fitter specific scalar results, such as the evidence from a
-        # nested sampler; empty for fitters which don't provide any
-        extra_results=getattr(fit_state, "extra_results", {}),
         # webview FitResults
         state=fit_state,
         convergence=webview_fit.convergence,
         method=webview_fit.method,
         options=webview_fit.options,
     )
+    # Set nfev from the fitter state for fitters whose state counts the
+    # function evaluations. Left unset otherwise, following scipy.
+    if (nfev := getattr(fit_state, "nfev", None)) is not None:
+        results.nfev = nfev
     return results
 
 
@@ -2068,9 +2069,7 @@ def fit_result_summary(results: OptimizeResult) -> dict:
     fitted parameter labels, matching the order of x and dx), *numpoints*
     (number of data points) and *chisq* (normalized chi-squared at the best
     point, at full precision). For a model with gaussian independent
-    uncertainties the raw sum of squares is chisq*dof. *extra_results* holds
-    the scalar results particular to the fitter, such as the evidence from a
-    nested sampler, and is empty for fitters which don't provide any.
+    uncertainties the raw sum of squares is chisq*dof.
     """
     return {key: value for key, value in results.items() if key not in _FIT_RESULT_EXCLUDE_FIELDS}
 
@@ -2268,15 +2267,16 @@ def fit(
         numpoints=problem.model_points(),
         chisq=problem.chisq(nllf=fx),
         timestamp=now_string(),
-        # fitter specific scalar results, such as the evidence from a
-        # nested sampler; empty for fitters which don't provide any
-        extra_results=getattr(fit_state, "extra_results", {}),
         # webview FitResults
         state=fit_state,
         convergence=convergence,
         method=method,
         options=options,
     )
+    # Set nfev from the fitter state for fitters whose state counts the
+    # function evaluations. Left unset otherwise, following scipy.
+    if (nfev := getattr(fit_state, "nfev", None)) is not None:
+        result.nfev = nfev
 
     problem.setp(x)
     if verbose:
