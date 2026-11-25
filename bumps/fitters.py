@@ -29,6 +29,7 @@ from numpy.typing import NDArray
 if TYPE_CHECKING:
     from h5py import Group
     from bumps.bayes import BayesDraw
+    from bumps.nested_sampling import NestedDraw
     from bumps.dream.state import MCMCDraw
 
 
@@ -1261,6 +1262,16 @@ class NestedSamplerFit(FitBase):
     def save(self, output_path):
         if self.state is not None:
             self.state.save(output_path)
+
+    @staticmethod
+    def h5load(group: "Group") -> "NestedDraw":
+        from .nested_sampling import NestedDraw
+
+        return NestedDraw.h5load(group)
+
+    @staticmethod
+    def h5dump(group: "Group", state: "NestedDraw"):
+        state.h5dump(group)
 
     def _best_sample(self):
         """
