@@ -2,6 +2,11 @@
 Change History
 **************
 
+Unreleased
+----------
+* DREAM preserves built-in crossover weights and cumulative adaptation
+  statistics across in-memory, HDF5 and exported-chain resume (#367).
+
 v1.0.0 2025-06-24
 -----------------
 * a new web-based GUI (webview) has been added as the default GUI
