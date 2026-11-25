@@ -1096,6 +1096,25 @@ class DreamFit(FitBase):
         steps = int(np.ceil((steps - 1) / DE_steps)) * DE_steps + 1  # round up to multiple of DE_steps
         return steps
 
+
+class _NestedSamplerPool:
+    def __init__(self, mapper, size=0):
+        self.mapper = mapper
+        # Some parts of dynesty are asking for pool.size; not sure if we need it
+        # when we are only mapping nllf.
+        # self.size = size
+
+    def map(self, F, x):
+        # The bumps mapper operates only on nllf, so F is ignored.
+        # Be sure that use_pool[fname] is False for all but "loglikelihood"
+        # Output from nested sampling is converted to a blob
+        from dynesty.utils import LoglOutput
+
+        result = self.mapper(x)
+        # print("ns mapper result", result, file=sys.__stderr__)
+        return [LoglOutput(-fx, False) for fx in result]
+
+
 class NestedSamplerFit(FitBase):
     """
     A nested sampler fitter.
@@ -1103,17 +1122,20 @@ class NestedSamplerFit(FitBase):
     The *pop* option sets the number of live points. In its relative form it is
     limited below by :attr:`MIN_POP`; a negative *pop* is used as given.
     """
+
     name = "Nested Sampling"
     id = "ns"
     # lower bound for relative population so we get decent posteriors on small problems
     MIN_POP = 500
-    settings = [("steps", 20000),
-                ("pop", 100),
-                ("dlogz", 0.01),
-                ("pfrac", 0.0),
-                ("n_effective", 10000),
-                ("bound_method", "multi"),
-                ("sample_method", "auto")]
+    settings = [
+        ("steps", 20000),
+        ("pop", 100),
+        ("dlogz", 0.01),
+        ("pfrac", 0.0),
+        ("n_effective", 10000),
+        ("bound_method", "multi"),
+        ("sample_method", "auto"),
+    ]
 
     def __init__(self, problem):
         self.problem = problem
@@ -1152,12 +1174,20 @@ class NestedSamplerFit(FitBase):
 
         options = _fill_defaults(options, self.settings)
         steps = options["steps"]
-        # arguments for stopping criteria 
+        # arguments for stopping criteria
         stop_args = {
             "pfrac": options["pfrac"],
             "evid_thresh": options["dlogz"],
             "target_n_effective": options["n_effective"],
         }
+
+        use_pool = {
+            "prior_transform": False,
+            "loglikelihood": True,
+            "propose_point": False,
+            "update_bound": False,
+        }
+        pool = _NestedSamplerPool(mapper)
 
         # the number of live points is only needed by the constructor
         ndim = len(self.parameters)
@@ -1169,6 +1199,9 @@ class NestedSamplerFit(FitBase):
             nlive=nlive,
             bound=options["bound_method"],
             sample=options["sample_method"],
+            use_pool=use_pool,
+            pool=pool,
+            queue_size=nlive,
         )
 
         niter = 0
@@ -1264,7 +1297,7 @@ class NestedSamplerFit(FitBase):
         """
         # because we sample from the prior distribution, we only use the model likelihood
         # in the sampler - so we need to re-add the parameter and constraints prior to
-        # get the complete objective function 
+        # get the complete objective function
         samples = self.results.samples
         # the sampling likelihood is -model_nllf. Keep it separate from the
         # prior so that the prior is not counted twice.
@@ -1342,6 +1375,7 @@ class NestedSamplerFit(FitBase):
         # sampler wraps up by yielding the remaining live points one at a
         # time, followed by a final iteration
         return options["steps"] + nlive + 1
+
 
 class Resampler(FitBase):
     # TODO: why isn't cli.resynth using this?
@@ -2356,7 +2390,7 @@ def test_fitters(subtests):
     expected_value = [1.106e-1, 1.970]
     expected_error = [5.799e-2, 2.055e-2]
     # Nested sampling returns the best *sampled* point rather than an optimum
-    # so it is a little away from the true minimum; 
+    # so it is a little away from the true minimum;
     # Relative to the intercept (0.11 +/- 0.06) that is a few parts in 1000,
     # so it needs a looser tolerance on the values than the optimizers do.
     fitter_tols = {"ns": 1e-2}
