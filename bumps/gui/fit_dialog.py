@@ -33,7 +33,7 @@ import wx
 
 import wx.lib.newevent
 
-from .. import options
+from . import old_options as options
 from .input_list import InputListPanel
 from .utilities import phoenix
 
