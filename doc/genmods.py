@@ -171,6 +171,7 @@ BUMPS_MODULES = [
     ("fitservice", "Remote job plugin for fit jobs"),
     ("fitters", "Wrappers for various optimization algorithms"),
     ("history", "Optimizer evaluation trace"),
+    ("importance", "Uncertainty from sampling the covariance matrix"),
     ("initpop", "Population initialization strategies"),
     ("logger", "Support tools for logger configuration"),
     ("lsqerror", "Least squares error analysis"),

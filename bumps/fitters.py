@@ -1919,7 +1919,9 @@ def fit(
     previous result.
 
     If *export=path* is provided, generate the standard plots and export files
-    to the specified directory.
+    to the specified directory. For fitters without an MCMC sample, the
+    uncertainty report and plots come from points drawn from the covariance
+    matrix and weighted by the likelihood (see :func:`bumps.importance.sample_from_cov`).
 
     You can set *name=basename* as the base file name for all files stored in
     the export directory, or use
@@ -2039,7 +2041,7 @@ def fit(
     if export is not None:
         from .api import export_fit
 
-        export_fit(export, problem, result, basename=name)
+        export_fit(export, problem, result, basename=name, mapper=mapper)
 
     return result
 

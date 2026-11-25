@@ -57,8 +57,9 @@ from . import options as fit_options
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .fitproblem import Fitness, FitProblem, load_problem, load_pars, fitness_chisq_str
 from .fitters import FitDriver, OptimizeResult, FIT_DEFAULT_ID, FIT_ACTIVE_IDS, save_fit_result
+from .importance import DEFAULT_SAMPLES, ImportanceSample, sample_from_cov
 from .logger import logger
-from .mapper import MPMapper
+from .mapper import MPMapper, can_pickle
 from .parameter import Parameter, Constant, Variable, unique
 from .dream.stats import var_stats
 from .dream.state import MCMCDraw
@@ -501,7 +502,19 @@ async def get_serializer():
 
 
 @register
-async def export_results(export_path: Union[str, List[str]] = ""):
+async def export_results(
+    export_path: Union[str, List[str]] = "",
+    err_samples: int = DEFAULT_SAMPLES,
+    err_sample: Optional[ImportanceSample] = None,
+):
+    """
+    Write the model, parameters, fit results and plots to *export_path*.
+
+    Without an MCMC sample, the parameter uncertainty comes from *err_samples*
+    points drawn from the covariance matrix and weighted by the likelihood (see
+    :func:`export_fit`). Use *err_sample* to provide a sample that has already
+    been drawn.
+    """
     # print("export nap"); await asyncio.sleep(0.1)
     # from concurrent.futures import ThreadPoolExecutor
 
@@ -521,12 +534,43 @@ async def export_results(export_path: Union[str, List[str]] = ""):
     if not isinstance(export_path, list):
         export_path = [export_path]
     path = Path(*export_path).expanduser().absolute()
+    need_mapper = (
+        err_sample is None and err_samples > 0 and fit.convergence is not None and not hasattr(fit.fit_state, "draw")
+    )
+    mapper = _sample_mapper(problem) if need_mapper else None
     notification_id = await add_notification(content=f"<span>{str(path)}</span>", title="Export started", timeout=None)
     try:
-        await to_thread(export_fit, path, problem, fit, serializer)
+        await to_thread(
+            export_fit, path, problem, fit, serializer, err_samples=err_samples, err_sample=err_sample, mapper=mapper
+        )
     finally:
         await emit("cancel_notification", notification_id)
     # print("done export thread")
+
+
+def _sample_mapper(problem: FitProblem):
+    """
+    Return a function that evaluates *problem* at many points after a fit, or
+    None to evaluate them one at a time.
+
+    Uses the parallel mapper if there is one, no fit is running, and the
+    problem can be sent to the workers.
+    """
+    mapper = state.mapper
+    if mapper is None or (state.fit_thread is not None and state.fit_thread.is_alive()):
+        return None
+    if not can_pickle(problem) and not mapper.has_problem:
+        return None
+    return mapper.start_mapper(problem, [], cpus=state.parallel)
+
+
+def draw_cov_sample(problem: FitProblem, samples: int = DEFAULT_SAMPLES) -> ImportanceSample:
+    """
+    Draw *samples* points from the covariance matrix of *problem* at its current
+    parameter values, weighted by the likelihood, using the parallel mapper if
+    it is available. See :func:`bumps.importance.sample_from_cov`.
+    """
+    return sample_from_cov(problem, samples=samples, mapper=_sample_mapper(problem))
 
 
 # Note: need naming convention for sync and async versions
@@ -536,7 +580,20 @@ def export_fit(
     fit: FitResult | OptimizeResult,
     serializer: Optional[str] = "dataclass",
     basename: Optional[str] = None,
+    err_samples: int = DEFAULT_SAMPLES,
+    err_sample: Optional[ImportanceSample] = None,
+    mapper=None,
 ):
+    """
+    Write the model, parameters, fit results and plots to the directory *path*.
+
+    If the fit has no MCMC sample, the parameter uncertainty in the .err file
+    and the uncertainty plots comes from *err_samples* points drawn from the
+    covariance matrix and weighted by the likelihood, evaluated with *mapper*
+    (see :func:`bumps.importance.sample_from_cov`). Use *err_sample* to provide
+    a sample that has already been drawn, or *err_samples=0* to skip the
+    uncertainty report. Nothing is sampled if no fit has been run.
+    """
     # print("running export thread")
     from .util import redirect_console
 
@@ -595,6 +652,17 @@ def export_fit(
 
     # Handle OptimizeResult or FitResult
     fit_state = getattr(fit, "fit_state", getattr(fit, "state", None))
+    fit_complete = getattr(fit, "convergence", None) is not None
+    if not hasattr(fit_state, "draw") and fit_complete:
+        # Without an MCMC sample, report the uncertainty from a sample drawn
+        # from the covariance matrix and weighted by the likelihood.
+        if err_sample is None and err_samples > 0:
+            try:
+                err_sample = sample_from_cov(problem, samples=err_samples, mapper=mapper)
+            except Exception as exc:
+                logger.error(f"Error sampling the covariance matrix for the uncertainty: {exc}")
+        if err_sample is not None:
+            fit_state = err_sample
     with push_mpl_backend("agg"):
         # Produce model plots
         problem.plot(figfile=output_pathstr)
@@ -608,7 +676,6 @@ def export_fit(
                 fit_state.show(figfile=output_pathstr)
             fit_state.save(output_pathstr)
 
-        # TODO: draw from covariance matrix if we don't have an MC sample
         # Only proceed with uncertainty plots if we can draw from the state
         if hasattr(fit_state, "draw"):
             # TODO: duplicates code in fitters.DreamFit.error_plot

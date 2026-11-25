@@ -36,6 +36,10 @@ be run from the command line interface or through a python script.
 For parameter uncertainty, most algorithms use the covariance matrix at
 the optimum to estimate an uncertainty ellipse.  This is okay for a
 preliminary analysis, but only works reliably for weakly correlated parameters.
+When reporting the uncertainty (:ref:`option-err` and :ref:`option-export`),
+Bumps draws points from the ellipse and weights them by the likelihood, which
+corrects the credible intervals for moderate departures from the ellipse and
+warns when it is a poor description (see :ref:`option-err-samples`).
 For full uncertainty analysis, :ref:`fit-dream` uses a random walk to explore
 the parameter space near the minimum, showing pair-wise correlations
 amongst the parameter values.  In order for :ref:`fit-dream` to return the

@@ -1579,8 +1579,10 @@ class Draw:
     *Nvar* is the number of dimensions per point in the draw after
     including derived parameters and excluding nuisance parameters.
 
-    *weights* are the weights associated with each point. Since the chains
-    are run at a single temperature the weights will all be 1.
+    *weights* are the weights associated with each point, or None if all
+    points have the same weight. MCMC chains run at a single temperature, so
+    their weights are None. States that provide *chain_weights()*, such as
+    :class:`bumps.importance.ImportanceSample`, give each point a weight.
 
     *logp[n]* is the negative log likelihuud for each sampled point.
 
@@ -1647,11 +1649,13 @@ class Draw:
         # TODO: Make a copy?
         # Draw samples from the state according to portion and thinning.
         _, chains, logp = state.chains()
+        weights = state.chain_weights() if hasattr(state, "chain_weights") else None
         start = int((1 - portion) * len(chains))
         gen_index = slice(start, None, thin)
         chain_index = slice(None) if outliers else state._good_chains
         chains = chains[gen_index, chain_index, :]
         chains_logp = logp[gen_index, chain_index]
+        chains_weights = None if weights is None else weights[gen_index, chain_index]
         Ngen, Npop, Nvar = chains.shape
 
         # Derived variables are created during the draw so that existing data isn't altered.
@@ -1712,10 +1716,12 @@ class Draw:
             # All points selected, so simply adjust the view
             self.points = chains.reshape(-1, Nvar)
             self.logp = chains_logp.flatten()
+            self.weights = None if chains_weights is None else chains_weights.flatten()
         else:
             # Only some points selected, so grab those under the mask
             self.points = chains[mask, :]
             self.logp = chains_logp[mask]
+            self.weights = None if chains_weights is None else chains_weights[mask]
 
         # # Keep the thinned chains and the mask for trace plots
         # self.chains = chains
@@ -1724,7 +1730,6 @@ class Draw:
         # stop, step = state.total_generations, thin*state.thinning
         # self.generation = np.arange(stop - (Ngen-1)*step + 1, stop + 2, step) # 1-origin inclusive
 
-        self.weights = None
         self.Nvar = Nvar
 
         # Cache for the sorted argument indices.
