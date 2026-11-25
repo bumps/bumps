@@ -82,6 +82,7 @@ PREFERRED_PORT = 5148  # "SLAB"
 
 gil_disabled = not (getattr(sys, "_is_gil_enabled", lambda: True)())
 
+
 @dataclass
 class BumpsOptions:
     """
@@ -466,7 +467,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--threads",
         action=argparse.BooleanOptionalAction,
         default=BumpsOptions.threads,
-        help="Enable multithreaded parallelism (Defaults to True on free-threaded Python. Use --no-threads to disable)"
+        help="Enable multithreaded parallelism (Defaults to True on free-threaded Python. Use --no-threads to disable)",
     )
     misc.add_argument(
         "--mpi",
@@ -593,9 +594,9 @@ def test_bumps_options():
     valid = {f.name for f in fields(BumpsOptions)}
     parsed = {k.split(".")[0] for k in args.__dict__.keys()}
     if parsed - valid:
-        raise TypeError(f"The following fields are missing from BumpsOptions: {parsed-valid}")
+        raise TypeError(f"The following fields are missing from BumpsOptions: {parsed - valid}")
     if valid - parsed:
-        raise TypeError(f"The following fields don't have command options: {valid-parsed}")
+        raise TypeError(f"The following fields don't have command options: {valid - parsed}")
 
     # Check defaults.
     # Using `defaults = BumpsOptions()` so that fit_options dict field gets assigned {}
@@ -618,12 +619,12 @@ def interpret_fit_options(options: BumpsOptions):
 
     if options.use_persistent_path:
         api.state.base_path = persistent_settings.get_value(
-            "base_path", str(Path().absolute()), application=api.state.app_name
+            "base_path", str(Path().expanduser().resolve()), application=api.state.app_name
         )
     elif options.path is not None and Path(options.path).exists():
         api.state.base_path = options.path
     else:
-        api.state.base_path = str(Path.cwd().absolute())
+        api.state.base_path = str(Path.cwd().resolve())
 
     if options.read_session is not None and options.session is not None:
         warnings.warn("read_session and session are both set; read_session will be used to initialize state")
@@ -663,7 +664,7 @@ def interpret_fit_options(options: BumpsOptions):
     # TODO: why is session file read immediately but model.py delayed?
     # If a session file exists load the problem.
     if read_session is not None:
-        read_session_path = Path(read_session).absolute()
+        read_session_path = Path(read_session).expanduser().resolve()
         if read_session_path.exists():
             api.state.read_session_file(str(read_session_path))
             if write_session is None:
@@ -673,7 +674,7 @@ def interpret_fit_options(options: BumpsOptions):
                 )
 
     if write_session is not None:
-        write_session_path = Path(write_session).absolute()
+        write_session_path = Path(write_session).expanduser().resolve()
         # TODO: Why are we splitting path into parts?
         api.state.shared.session_output_file = dict(
             pathlist=list(write_session_path.parent.parts), filename=write_session_path.name
@@ -712,25 +713,23 @@ def interpret_fit_options(options: BumpsOptions):
     api.state.parallel = options.parallel
 
     # TODO: How do we resume if the model is saved as a pickle and can't be restored?
-    # on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
     # resume only works when you have an identical problem, so we don't load from file
     # if we are resuming the fit.
     if options.reload_export:
 
         async def load_export_to_state(App=None):
             problem, fit = reload_export(options.reload_export, modelfile=options.filename, args=options.args)
-            path = Path(problem.path)
+            path = Path(problem.path).expanduser().resolve()
             await api.set_problem(problem, path.parent, path.name, fit=fit)
 
         on_startup.append(load_export_to_state)
 
-    # on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
     # resume only works when you have an identical problem, so we don't load from file
     # if you are resuming the fit.
     elif options.filename is not None and not options.resume:
 
         async def load_problem_to_state(App=None):
-            path = Path(options.filename).absolute()
+            path = Path(options.filename).expanduser().resolve()
             problem = load_problem(path, args=options.args)
             await api.set_problem(problem, path.parent, path.name)
 
@@ -739,7 +738,7 @@ def interpret_fit_options(options: BumpsOptions):
     # TODO: allow pars to be loaded from a session file.
     # TODO: verify that --pars doesn't interfere with --resume
     if options.pars is not None:
-        filepath = Path(options.pars).absolute()
+        filepath = Path(options.pars).expanduser().resolve()
         pars_pathlist = list(filepath.parent.parts)
         pars_filename = filepath.name
         on_startup.append(lambda App: api.apply_parameters(pars_pathlist, pars_filename))
