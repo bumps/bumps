@@ -38,7 +38,7 @@ mc = sampler.sample()
 mc.title = "Strong anti-correlation"
 
 # Create a derived parameter without the correlation
-mc.derive_vars(lambda p: (p[0] + p[1]), labels=["x+y"])
+mc.derive_vars(lambda p: p[0] + p[1], labels=["x+y"])
 
 # Compare the MCMC estimate for the derived parameter to a least squares fit
 from bumps.wsolve import wpolyfit

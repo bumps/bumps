@@ -887,7 +887,7 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
             if self.num_models > 1:
                 chisq_str = fitness_chisq_str(f)
                 chisq = f"χ² = {chisq_str}; overall {overall_chisq_str}"
-                title = f"Model {i+1}: {f.name}"
+                title = f"Model {i + 1}: {f.name}"
             else:
                 chisq = f"χ² = {overall_chisq_str}"
                 title = f"{f.name}"

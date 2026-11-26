@@ -128,7 +128,7 @@ def _decorate_histogram(vstats: "VarStats", fig: dict, subplot: int = 1):
         line=dict(color="darkblue", width=1, dash="dot"),
         layer="below",
         # TODO: hovertext is not appearing when the cursor is above the line
-        hovertext=f"{vstats.label}<br>median: {format_num(vstats.median, place-1)}",
+        hovertext=f"{vstats.label}<br>median: {format_num(vstats.median, place - 1)}",
     )
     fig["layout"]["shapes"].append(median_line)
     shading_rect = dict(
@@ -171,7 +171,7 @@ def _decorate_histogram(vstats: "VarStats", fig: dict, subplot: int = 1):
 
     # marker("|", vstats.median, f"{vstats.label}<br>median: {format_num(vstats.median, place-1)}")
     marker("▽", vstats.mean, f"{vstats.label}<br>mean: {format_uncertainty(vstats.mean, vstats.std)}")
-    marker("∗", vstats.best, f"{vstats.label}<br>best: {format_num(vstats.best, place-1)}")
+    marker("∗", vstats.best, f"{vstats.label}<br>best: {format_num(vstats.best, place - 1)}")
 
     label_annotation = dict(
         xref=f"{xaxis} domain",
