@@ -263,11 +263,14 @@ class FitBase(object):
 
     @classmethod
     def max_steps(
-        cls, problem: Optional["bumps.fitproblem.FitProblem"] = None, options: Optional[Dict[str, Any]] = None
+        cls,
+        problem: Optional["bumps.fitproblem.FitProblem"] = None,
+        options: Optional[Dict[str, Any]] = None,
+        fit_state: Any = None,
     ) -> int:
         """
         Return the maximum number of steps the fitter will take based on
-        the given options.
+        the given options, resuming from *fit_state* if it is not None.
 
         Default implementation just returns the 'steps' option multiplied by 'starts',
         """
@@ -1082,7 +1085,9 @@ class DreamFit(FitBase):
             plt.savefig(figfile + "-errors.png", format="png")
 
     @classmethod
-    def max_steps(cls, problem: "bumps.fitproblem.FitProblem", options: Optional[Dict[str, Any]] = None) -> int:
+    def max_steps(
+        cls, problem: "bumps.fitproblem.FitProblem", options: Optional[Dict[str, Any]] = None, fit_state: Any = None
+    ) -> int:
         from .dream.core import Dream
 
         options = _fill_defaults(options, cls.settings)
@@ -1147,13 +1152,20 @@ class NestedSamplerFit(FitBase):
     def solve(self, monitors: MonitorRunner, mapper=None, **options):
         """
         Fit the problem using nested sampling.
+
+        If there is a state from a previous fit, then continue its run for up to
+        *steps* more iterations, keeping its number of live points. Only the
+        fitted parameters are checked: the run is invalid if the model or data
+        have changed since.
         """
         from dynesty import DynamicNestedSampler
-        from dynesty.dynamicsampler import stopping_function, weight_function
+        from dynesty.dynamicsampler import DynamicSamplerStatesEnum, stopping_function, weight_function
+
+        from .nested_sampling import restore_sampler
 
         options = _fill_defaults(options, self.settings)
         steps = options["steps"]
-        # arguments for stopping criteria 
+        # arguments for stopping criteria
         stop_args = {
             "pfrac": options["pfrac"],
             "evid_thresh": options["dlogz"],
@@ -1171,18 +1183,33 @@ class NestedSamplerFit(FitBase):
             bound=options["bound_method"],
             sample=options["sample_method"],
         )
+        if self.state is not None and self.state.labels != self.problem.labels():
+            warnings.warn("Can't resume a nested sampling run after the fitted parameters have changed")
+        elif self.state is not None:
+            restore_sampler(self.nested_sampler, self.state)
+        # The state is costly to build, so checkpoints call for it when they need it.
+        monitors.history.fit_state = self._snapshot
 
-        niter = 0
+        # Iterations are numbered from the start of the run, which may be in a previous fit.
+        niter = start = self.nested_sampler.it - 1
+        stop = start + steps
         aborted = monitors.stopping()
 
         # baseline initial sampling
-        if not aborted:
-            for _ in self.nested_sampler.sample_initial(dlogz=options["dlogz"], maxiter=steps):
+        phase = self.nested_sampler.internal_state
+        if not aborted and phase in (DynamicSamplerStatesEnum.INIT, DynamicSamplerStatesEnum.INBASE):
+            resume = phase == DynamicSamplerStatesEnum.INBASE
+            for _ in self.nested_sampler.sample_initial(
+                dlogz=options["dlogz"], maxiter=steps, save_bounds=False, resume=resume
+            ):
                 niter += 1
                 self.update(monitors, niter)
                 if monitors.stopping():
                     aborted = True
-                    break
+                    # Adding the final live points makes no likelihood calls,
+                    # so let it complete the initial run.
+                    if self.nested_sampler.internal_state == DynamicSamplerStatesEnum.INBASE:
+                        break
 
         if niter == 0:
             # restore starting point as we have no data
@@ -1193,11 +1220,13 @@ class NestedSamplerFit(FitBase):
 
         # sample in batches until the stopping criterion is reached
         # maxiter is per call, so we need to remove iters as we run
-        while not aborted and niter < steps:
+        while not aborted and niter < stop:
             if stopping_function(self.nested_sampler.results, args=stop_args):  # evaluate stop
+                if niter == start:
+                    monitors.info("# The run already meets the stopping criteria")
                 break
             logl_bounds = weight_function(self.nested_sampler.results)  # derive bounds
-            for _ in self.nested_sampler.sample_batch(logl_bounds=logl_bounds, maxiter=steps - niter):
+            for _ in self.nested_sampler.sample_batch(logl_bounds=logl_bounds, maxiter=stop - niter, save_bounds=False):
                 niter += 1
                 self.update(monitors, niter)
                 # Check for user abort or fit timeout. The partial batch is
@@ -1216,9 +1245,27 @@ class NestedSamplerFit(FitBase):
         if not aborted:
             self.results = self.nested_sampler.results
 
+        monitors.history.fit_state = self._snapshot()
+        x, logp = self.state.best()
+        return x, -logp
+
+    def _snapshot(self) -> Optional["NestedDraw"]:
+        """
+        Return the state of the run so far, from which it can be continued.
+
+        While the final live points of the initial run are being added the
+        run can't be continued, so the previous state is returned.
+        """
+        from dynesty.dynamicsampler import DynamicSamplerStatesEnum
+
+        phase = self.nested_sampler.internal_state
+        if phase == DynamicSamplerStatesEnum.INBASEADDLIVE:
+            return self.state
+        if phase == DynamicSamplerStatesEnum.INBASE:
+            self.results = self.nested_sampler.results
         x, fx = self._best_sample()
-        self.state = monitors.history.fit_state = self._build_draw(best=(x, -fx))
-        return x, fx
+        self.state = self._build_draw(best=(x, -fx))
+        return self.state
 
     def _build_draw(self, best):
         """
@@ -1229,7 +1276,7 @@ class NestedSamplerFit(FitBase):
         """
         from dynesty.utils import resample_equal
 
-        from .nested_sampling import NestedDraw
+        from .nested_sampling import NestedDraw, capture_sampler_state
 
         results = self.results
         # Nested sampling returns unequally weighted points ordered by increasing
@@ -1248,6 +1295,7 @@ class NestedSamplerFit(FitBase):
             title=self.problem.name,
             best=best,
             results=results,
+            sampler_state=capture_sampler_state(self.nested_sampler),
         )
         _set_problem_vars(draw, self.problem)
         return draw
@@ -1346,17 +1394,26 @@ class NestedSamplerFit(FitBase):
         return max(nlive, cls.MIN_POP) if options["pop"] > 0 else nlive
 
     @classmethod
-    def max_steps(cls, problem: "bumps.fitproblem.FitProblem", options: Optional[Dict[str, Any]] = None) -> int:
+    def max_steps(
+        cls,
+        problem: "bumps.fitproblem.FitProblem",
+        options: Optional[Dict[str, Any]] = None,
+        fit_state: Optional["NestedDraw"] = None,
+    ) -> int:
         """
         Return the maximum number of steps the fitter will take based on
-        the given options.
+        the given options, continuing the run in *fit_state* if it is not None.
         """
         options = _fill_defaults(options, cls.settings)
         nlive = cls._nlive(options, len(problem.getp()))
+        start = 0
+        if fit_state is not None:
+            # steps are numbered from the start of the run, which keeps its live points
+            nlive, start = fit_state.nlive, fit_state.results.niter
         # steps only bounds the sampling iterations. Once it is reached the
         # sampler wraps up by yielding the remaining live points one at a
         # time, followed by a final iteration
-        return options["steps"] + nlive + 1
+        return start + options["steps"] + nlive + 1
 
 class Resampler(FitBase):
     # TODO: why isn't cli.resynth using this?
@@ -2412,3 +2469,88 @@ def test_fitters(subtests):
                 # rather than from the curvature at the optimum, so they vary
                 # too much to test.
                 assert_allclose(result.dx, expected_error, rtol=fit_error_tol)
+
+
+def test_nested_resume():
+    """
+    Continue a nested sampling run from each point it can stop at.
+    """
+    import pytest
+    from dynesty.dynamicsampler import DynamicSamplerStatesEnum as Phase
+
+    from .curve import Curve
+    from .fit_thread import EVT_FIT_PROGRESS, DreamMonitor
+    from .fitproblem import FitProblem
+
+    x = np.array([1, 2, 3, 4, 5, 6.0])
+    y = np.array([2.1, 4.0, 6.3, 8.03, 9.6, 11.9])
+    dy = np.array([0.05, 0.05, 0.2, 0.05, 0.2, 0.2])
+    M = Curve(lambda x, m, b: m * x + b, x, y, dy, m=2, b=2)
+    M.m.range(0, 4)
+    M.b.range(-5, 5)
+    problem = FitProblem(M)
+
+    # The model is linear so the posterior is gaussian, giving the evidence
+    # over the uniform prior on the 4 x 10 box.
+    A = np.column_stack([x, np.ones_like(x)]) / dy[:, None]
+    chisq = np.linalg.lstsq(A, y / dy, rcond=None)[1]
+    logz = -chisq[0] / 2 + np.log(2 * np.pi) - np.linalg.slogdet(A.T @ A)[1] / 2 - np.log(40)
+
+    def run(state=None, phase=None, monitors=(), **options):
+        """Fit from *state*, aborting partway through *phase* if given."""
+
+        def abort():
+            sampler = driver.fitter.nested_sampler
+            return sampler.internal_state == phase and sampler.it > 300
+
+        options = {"pop": -100, "dlogz": 0.5, "n_effective": 500, **options}
+        driver = FitDriver(NestedSamplerFit, problem=problem, monitors=list(monitors), abort_test=abort, **options)
+        driver.fit(fit_state=state)
+        return driver.fitter.nested_sampler, driver.fitter.state
+
+    def check(sampler, start):
+        """The run continued from iteration *start* and converged on the evidence."""
+        results = sampler.results
+        assert results.niter > start
+        assert results.batch_nlive[0] == 100
+        assert abs(results.logz[-1] - logz) < 4 * results.logzerr[-1]
+
+    # Runs with the default dlogz meet the stopping criteria after the initial
+    # run; a smaller dlogz needs batches, which are capped by steps.
+
+    # (a) aborted in the initial run; pop is ignored on resume
+    sampler, state = run(phase=Phase.INBASE)
+    assert sampler.internal_state == Phase.INBASE and "live_u" in state.sampler_state
+    assert NestedSamplerFit.max_steps(problem, {"pop": -50}, state) == state.results.niter + 20000 + 100 + 1
+    check(run(state, pop=-50)[0], state.results.niter)
+
+    # (b) aborted in a batch
+    sampler, state = run(phase=Phase.INBATCH, dlogz=0.25)
+    assert sampler.internal_state == Phase.INBATCH and "live_u" not in state.sampler_state
+    check(run(state, dlogz=0.25, steps=1000)[0], state.results.niter)
+
+    # (c) complete, then refined
+    sampler, state = run()
+    check(run(state, dlogz=0.25, steps=1000)[0], state.results.niter)
+
+    # (d) from a checkpoint taken during the initial run
+    checkpoints = []
+
+    def receive(event):
+        # skip the initial state, which is None for a new fit
+        if event["message"] == "uncertainty_update" and event["fit_state"] is not None:
+            checkpoints.append(event["fit_state"])
+
+    EVT_FIT_PROGRESS.connect(receive)
+    try:
+        run(monitors=[DreamMonitor(problem, method="ns", rate=0.05)])
+    finally:
+        EVT_FIT_PROGRESS.disconnect(receive)
+    state = next(state for state in checkpoints if "live_u" in state.sampler_state)
+    check(run(state)[0], state.results.niter)
+
+    # refused when the parameters change, so starting again
+    sampler, state = run(phase=Phase.INBASE)
+    state.labels = ["a", "b"]
+    with pytest.warns(UserWarning, match="parameters have changed"):
+        assert run(state, steps=10)[0].it < state.results.niter
