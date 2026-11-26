@@ -32,10 +32,9 @@ __all__ = [
     "get_fit_fields",
     "lookup_fitter",
     "Setting",
-    # CRUFT: old fit options data structures are still used by sasview
-    "FIT_CONFIG",
-    "FIT_FIELDS",
-    "ChoiceList",
+    # CRUFT: the deprecated FIT_CONFIG, FIT_FIELDS and ChoiceList are still available
+    # through the module __getattr__ (used by sasview), but are left out of __all__ so that
+    # "from bumps.options import *" does not trigger deprecation warnings.
 ]
 
 from typing import Dict, List, Tuple, Any, Callable, Optional
@@ -51,18 +50,27 @@ from bumps.fitters import FitBase, FITTERS, FIT_DEFAULT_ID, FIT_AVAILABLE_IDS, F
 # until SasView and webview are updated to a unified interface.
 
 # CRUFT: SasView is still using FIT_CONFIG, FIT_FIELDS and ChoiceList
-# Note: symbols are not imported directly, but instead assigned within the module so we can override
-# the sphinx documentation.
-from bumps.gui.old_options import FIT_CONFIG as _FIT_CONFIG, FIT_FIELDS as _FIT_FIELDS, ChoiceList as _ChoiceList
+# These are served through the module __getattr__ below so that a DeprecationWarning is
+# emitted when they are accessed (as options.FIT_CONFIG or via "from bumps.options import ...")
+# but not when bumps.options is simply imported. They must not be defined as module globals,
+# otherwise normal attribute lookup bypasses __getattr__.
+_DEPRECATED_NAMES = ("FIT_CONFIG", "FIT_FIELDS", "ChoiceList")
 
-FIT_CONFIG = _FIT_CONFIG
-"""*** DEPRECATED ***"""
 
-FIT_FIELDS = _FIT_FIELDS
-"""*** DEPRECATED ***"""
+def __getattr__(name: str):
+    if name in _DEPRECATED_NAMES:
+        import warnings
 
-ChoiceList = _ChoiceList
-"""*** DEPRECATED ***"""
+        from bumps.gui import old_options
+
+        warnings.warn(
+            f"bumps.options.{name} is deprecated and will be removed in a future release; "
+            "use bumps.options.Setting and the fitter settings in bumps.fitters instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return getattr(old_options, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 # TODO: If --fit=pt is specified then we need the pt options in the defaults
