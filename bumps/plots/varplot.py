@@ -11,7 +11,7 @@ from numpy.typing import NDArray
 import typing
 
 if typing.TYPE_CHECKING:
-    from bumps.dream.state import Draw
+    from bumps.bayes import Draw
     from bumps.dream.stats import VarStats
     import plotly.graph_objects as go
 
