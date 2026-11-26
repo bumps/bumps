@@ -788,7 +788,6 @@ async def start_fit_thread(
     # TODO: maybe prefer problem saved in store on resume
     # print(f"start fit thread {resume} {state.fitting.fit_state}")
     fitclass = fit_options.lookup_fitter(fitter_id)
-    max_steps = fitclass.max_steps(fitProblem, full_options)
 
     if resume and state.fitting.method != fitter_id:
         msg = f"Can't resume {fitter_id} from state saved by {state.fitting.method}"
@@ -796,6 +795,7 @@ async def start_fit_thread(
         await log(msg)
         resume = False
     state.reset_fitstate(copy=resume)
+    max_steps = fitclass.max_steps(fitProblem, full_options, fit_state=state.fitting.fit_state)
     state.fitting.method = fitter_id
     state.fitting.options = full_options
     state.shared.active_fit = to_json_compatible_dict(
