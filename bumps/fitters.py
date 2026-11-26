@@ -1187,6 +1187,8 @@ class NestedSamplerFit(FitBase):
             warnings.warn("Can't resume a nested sampling run after the fitted parameters have changed")
         elif self.state is not None:
             restore_sampler(self.nested_sampler, self.state)
+        # The state is costly to build, so checkpoints call for it when they need it.
+        monitors.history.fit_state = self._snapshot
 
         # Iterations are numbered from the start of the run, which may be in a previous fit.
         niter = start = self.nested_sampler.it - 1
@@ -1243,9 +1245,27 @@ class NestedSamplerFit(FitBase):
         if not aborted:
             self.results = self.nested_sampler.results
 
+        monitors.history.fit_state = self._snapshot()
+        x, logp = self.state.best()
+        return x, -logp
+
+    def _snapshot(self) -> Optional["NestedDraw"]:
+        """
+        Return the state of the run so far, from which it can be continued.
+
+        While the final live points of the initial run are being added the
+        run can't be continued, so the previous state is returned.
+        """
+        from dynesty.dynamicsampler import DynamicSamplerStatesEnum
+
+        phase = self.nested_sampler.internal_state
+        if phase == DynamicSamplerStatesEnum.INBASEADDLIVE:
+            return self.state
+        if phase == DynamicSamplerStatesEnum.INBASE:
+            self.results = self.nested_sampler.results
         x, fx = self._best_sample()
-        self.state = monitors.history.fit_state = self._build_draw(best=(x, -fx))
-        return x, fx
+        self.state = self._build_draw(best=(x, -fx))
+        return self.state
 
     def _build_draw(self, best):
         """
@@ -2459,6 +2479,7 @@ def test_nested_resume():
     from dynesty.dynamicsampler import DynamicSamplerStatesEnum as Phase
 
     from .curve import Curve
+    from .fit_thread import EVT_FIT_PROGRESS, DreamMonitor
     from .fitproblem import FitProblem
 
     x = np.array([1, 2, 3, 4, 5, 6.0])
@@ -2475,7 +2496,7 @@ def test_nested_resume():
     chisq = np.linalg.lstsq(A, y / dy, rcond=None)[1]
     logz = -chisq[0] / 2 + np.log(2 * np.pi) - np.linalg.slogdet(A.T @ A)[1] / 2 - np.log(40)
 
-    def run(state=None, phase=None, **options):
+    def run(state=None, phase=None, monitors=(), **options):
         """Fit from *state*, aborting partway through *phase* if given."""
 
         def abort():
@@ -2483,7 +2504,7 @@ def test_nested_resume():
             return sampler.internal_state == phase and sampler.it > 300
 
         options = {"pop": -100, "dlogz": 0.5, "n_effective": 500, **options}
-        driver = FitDriver(NestedSamplerFit, problem=problem, monitors=[], abort_test=abort, **options)
+        driver = FitDriver(NestedSamplerFit, problem=problem, monitors=list(monitors), abort_test=abort, **options)
         driver.fit(fit_state=state)
         return driver.fitter.nested_sampler, driver.fitter.state
 
@@ -2511,6 +2532,22 @@ def test_nested_resume():
     # (c) complete, then refined
     sampler, state = run()
     check(run(state, dlogz=0.25, steps=1000)[0], state.results.niter)
+
+    # (d) from a checkpoint taken during the initial run
+    checkpoints = []
+
+    def receive(event):
+        # skip the initial state, which is None for a new fit
+        if event["message"] == "uncertainty_update" and event["fit_state"] is not None:
+            checkpoints.append(event["fit_state"])
+
+    EVT_FIT_PROGRESS.connect(receive)
+    try:
+        run(monitors=[DreamMonitor(problem, method="ns", rate=0.05)])
+    finally:
+        EVT_FIT_PROGRESS.disconnect(receive)
+    state = next(state for state in checkpoints if "live_u" in state.sampler_state)
+    check(run(state)[0], state.results.niter)
 
     # refused when the parameters change, so starting again
     sampler, state = run(phase=Phase.INBASE)

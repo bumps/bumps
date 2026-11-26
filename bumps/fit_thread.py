@@ -126,9 +126,12 @@ class ConvergenceMonitor(monitor.Monitor):
         EVT_FIT_PROGRESS.send(evt)
 
 
-# HACK: We are grabbing uncertainty_state from the history on monitor update
-# and holding onto it for the monitor final call. Need to restructure the
-# history/monitor interaction so that object lifetimes are better controlled.
+def _current(fit_state):
+    """
+    Return *fit_state*, building it first if the fitter supplies a function
+    for building it on demand.
+    """
+    return fit_state() if callable(fit_state) else fit_state
 
 
 class DreamMonitor(monitor.Monitor):
@@ -139,7 +142,6 @@ class DreamMonitor(monitor.Monitor):
         self.rate = rate  # rate=0 for no progress update, only final
         self.update_counter = 0
         self.problem = problem
-        self.fit_state = fit_state
         self.method = method
         evt = dict(
             message=self.message,
@@ -153,7 +155,6 @@ class DreamMonitor(monitor.Monitor):
         history.requires(time=1)
 
     def __call__(self, history):
-        self.fit_state = getattr(history, "fit_state", None)
         self.time = history.time[0]
         if self.rate <= 0:
             return
@@ -163,7 +164,7 @@ class DreamMonitor(monitor.Monitor):
             evt = dict(
                 message=self.message,
                 time=self.time,
-                fit_state=deepcopy(self.fit_state),
+                fit_state=deepcopy(_current(getattr(history, "fit_state", None))),
                 method=self.method,
             )
             # print("Dream update", evt)
@@ -176,7 +177,7 @@ class DreamMonitor(monitor.Monitor):
         evt = dict(
             message="uncertainty_final",
             time=self.time,
-            fit_state=deepcopy(self.fit_state),
+            fit_state=deepcopy(_current(getattr(history, "fit_state", None))),
             method=self.method,
         )
         # print("Dream final", evt)
